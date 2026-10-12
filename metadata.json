@@ -1,0 +1,6 @@
+{
+  "name": "KickAI 5-Fold - ระบบวิเคราะห์บอล AI & โพสต์ Facebook อัตโนมัติ",
+  "description": "แอปวิเคราะห์บอลรายวันด้วยระบบ AI รวบรวมสถิติเชิงลึกหลายมิติ คัดสรรทีเด็ด Win 5-Fold Accumulator พร้อมระบบ Auto-Post Facebook อัตโนมัติล่วงหน้า 6 ชั่วโมง",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
