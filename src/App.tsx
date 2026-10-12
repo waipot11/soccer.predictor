@@ -107,6 +107,49 @@ export default function App() {
     }
   };
 
+  // Toggle back to demo simulation mode
+  const handleToggleDemoMode = async () => {
+    try {
+      setIsLoading(true);
+      const res = await fetch('/api/football/toggle-demo-mode', { method: 'POST' });
+      const data = await res.json();
+      if (data.success && data.accumulator) {
+        setAccumulator(data.accumulator);
+        if (data.reserves) setReserves(data.reserves);
+        showToast('สลับกลับสู่โหมดข้อมูลจำลองตัวอย่าง (Demo Simulation) เรียบร้อย');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('เกิดข้อผิดพลาดในการสลับโหมด', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Add custom real-world match fixture
+  const handleAddCustomMatch = async (customMatch: { homeTeam: string; awayTeam: string; league?: string; decimalOdds?: number }) => {
+    try {
+      setIsLoading(true);
+      const res = await fetch('/api/football/add-custom-match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(customMatch),
+      });
+      const data = await res.json();
+      if (data.success && data.accumulator) {
+        setAccumulator(data.accumulator);
+        showToast(`เพิ่มคู่แข่งขันจริง ${customMatch.homeTeam} vs ${customMatch.awayTeam} เข้าตั๋วสเต็ป 3 สำเร็จ!`);
+      } else {
+        showToast(data.error || 'ไม่สามารถเพิ่มคู่แข่งขันได้', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('เกิดข้อผิดพลาดในการเพิ่มคู่แข่งขัน', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Trigger Gemini AI statistical analysis
   const handleAnalyzeAI = async () => {
     try {
@@ -345,6 +388,8 @@ export default function App() {
             isSyncingReal={isSyncingReal}
             onOptimizeUltraSafe={handleOptimizeUltraSafe}
             isOptimizingUltraSafe={isOptimizingUltraSafe}
+            onToggleDemoMode={handleToggleDemoMode}
+            onAddCustomMatch={handleAddCustomMatch}
           />
         )}
 

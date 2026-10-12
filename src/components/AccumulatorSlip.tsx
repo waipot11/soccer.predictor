@@ -17,7 +17,11 @@ import {
   Award,
   Zap,
   Check,
-  Flame
+  Flame,
+  Plus,
+  AlertTriangle,
+  X,
+  Layers
 } from 'lucide-react';
 import { AccumulatorTicket, MatchFixture } from '../types';
 
@@ -34,6 +38,8 @@ interface AccumulatorSlipProps {
   isSyncingReal: boolean;
   onOptimizeUltraSafe?: () => void;
   isOptimizingUltraSafe?: boolean;
+  onToggleDemoMode?: () => void;
+  onAddCustomMatch?: (data: { homeTeam: string; awayTeam: string; league?: string; decimalOdds?: number }) => void;
 }
 
 export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
@@ -49,46 +55,209 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
   isSyncingReal,
   onOptimizeUltraSafe,
   isOptimizingUltraSafe = false,
+  onToggleDemoMode,
+  onAddCustomMatch,
 }) => {
   const [stakeAmount, setStakeAmount] = useState<number>(1000);
   const [swappingMatchId, setSwappingMatchId] = useState<string | null>(null);
   const [isGuideExpanded, setIsGuideExpanded] = useState<boolean>(true);
+  
+  // Custom match modal state
+  const [isCustomModalOpen, setIsCustomModalOpen] = useState<boolean>(false);
+  const [customHome, setCustomHome] = useState<string>('');
+  const [customAway, setCustomAway] = useState<string>('');
+  const [customLeague, setCustomLeague] = useState<string>('');
+  const [customOdds, setCustomOdds] = useState<string>('1.55');
 
   const potentialReturn = Math.round(stakeAmount * accumulator.combinedOdds);
   const potentialProfit = potentialReturn - stakeAmount;
 
+  const handleCustomSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customHome.trim() || !customAway.trim()) return;
+    if (onAddCustomMatch) {
+      onAddCustomMatch({
+        homeTeam: customHome.trim(),
+        awayTeam: customAway.trim(),
+        league: customLeague.trim() || 'การแข่งขันฟุตบอลจริง',
+        decimalOdds: parseFloat(customOdds) || 1.55,
+      });
+    }
+    setCustomHome('');
+    setCustomAway('');
+    setCustomLeague('');
+    setCustomOdds('1.55');
+    setIsCustomModalOpen(false);
+  };
+
+  const isRealMode = Boolean(accumulator.isRealMatchSchedule);
+
   return (
     <section id="accumulator-slip" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      {/* Real Mode Indicator Banner */}
-      <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      {/* Mode Indicator Banner (Real Mode vs Demo Mode) */}
+      <div className={`rounded-xl border p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-colors ${
+        isRealMode 
+          ? 'border-emerald-500/40 bg-emerald-950/25 shadow-lg shadow-emerald-950/20' 
+          : 'border-amber-500/40 bg-amber-950/25 shadow-lg shadow-amber-950/20'
+      }`}>
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shrink-0">
-            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
+            isRealMode 
+              ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400' 
+              : 'bg-amber-500/20 border-amber-500/40 text-amber-400'
+          }`}>
+            {isRealMode ? <CheckCircle2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-white uppercase tracking-wider">
-                โหมดตารางแข่งจริง (Live Real-World Match Mode)
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                {isRealMode ? '🟢 โหมดตารางแข่งขันจริง (Live Real Matches)' : '🎮 โหมดข้อมูลจำลองตัวอย่าง (Demo Simulation Dataset)'}
               </span>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-400 text-slate-950 font-bold">
-                ACTIVE
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                isRealMode 
+                  ? 'bg-emerald-400 text-slate-950' 
+                  : 'bg-amber-400 text-slate-950'
+              }`}>
+                {isRealMode ? 'LIVE REAL' : 'DEMO PRESET'}
               </span>
             </div>
             <p className="text-xs text-slate-300 mt-0.5">
-              แมตช์จริงประจำวันอาทิตย์ที่ 11 ต.ค. 2026 (Premier League, Serie A, La Liga) · แหล่งข้อมูล: {accumulator.dataSource || 'Google Search Grounding Live'}
+              {isRealMode 
+                ? `ตารางการแข่งขันจริงอ้างอิงจาก Google Search Live: ${accumulator.dataSource || 'Google Search Grounding'}`
+                : '3 คู่นี้ (สปอร์ติง, เคตาเฟ่, ฟอเรสต์) เป็นชุดข้อมูลตัวอย่างสำหรับทดสอบระบบ หากต้องการคู่แข่งจริงที่เตะคืนนี้ กรุณากดปุ่มด้านขวา'}
             </p>
           </div>
         </div>
 
-        <button
-          onClick={onSyncRealSchedule}
-          disabled={isSyncingReal}
-          className="text-xs px-3.5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold transition-all shadow-md shadow-emerald-500/20 cursor-pointer flex items-center gap-1.5 whitespace-nowrap disabled:opacity-50"
-        >
-          <Globe2 className={`w-3.5 h-3.5 ${isSyncingReal ? 'animate-spin' : ''}`} />
-          <span>{isSyncingReal ? 'กำลังดึงตารางแข่งจริงสด...' : 'อัปเดตตารางแข่งจริงด้วย AI'}</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap self-end md:self-auto">
+          <button
+            onClick={onSyncRealSchedule}
+            disabled={isSyncingReal}
+            className={`text-xs px-3.5 py-2 rounded-lg font-bold transition-all shadow-md cursor-pointer flex items-center gap-1.5 whitespace-nowrap disabled:opacity-50 ${
+              isRealMode
+                ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
+                : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20'
+            }`}
+          >
+            <Globe2 className={`w-3.5 h-3.5 ${isSyncingReal ? 'animate-spin' : ''}`} />
+            <span>{isSyncingReal ? 'กำลังค้นหาตารางจริง...' : '⚡ ดึงตารางแข่งจริงสดด้วย AI'}</span>
+          </button>
+
+          <button
+            onClick={() => setIsCustomModalOpen(true)}
+            className="text-xs px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all shadow-md shadow-blue-500/20 cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>➕ กรอกคู่แข่งจริงคืนนี้เอง</span>
+          </button>
+
+          {isRealMode && onToggleDemoMode && (
+            <button
+              onClick={onToggleDemoMode}
+              className="text-xs px-2.5 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+              title="สลับกลับไปดูข้อมูลตัวอย่าง"
+            >
+              <span>โหมดจำลอง</span>
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Custom Match Modal */}
+      {isCustomModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-500/20 border border-blue-500/40 flex items-center justify-center">
+                  <Plus className="w-4 h-4 text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">กรอกคู่แข่งขันจริงคืนนี้</h3>
+                  <p className="text-xs text-slate-400">ระบุคู่ที่เตะจริงจาก Livescore หรือเว็บกีฬา เพื่อนำมาใส่ในตั๋วสเต็ป 3</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsCustomModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCustomSubmit} className="space-y-3.5 text-xs">
+              <div className="space-y-1">
+                <label className="text-slate-300 font-semibold">รายการแข่งขัน / ลีก:</label>
+                <input 
+                  type="text" 
+                  value={customLeague}
+                  onChange={(e) => setCustomLeague(e.target.value)}
+                  placeholder="เช่น UEFA Nations League, สเปน เซกุนด้า, บราซิล เซเรีย อา" 
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-semibold">ทีมเหย้า (ทีมเต็ง): <span className="text-rose-400">*</span></label>
+                  <input 
+                    type="text" 
+                    required
+                    value={customHome}
+                    onChange={(e) => setCustomHome(e.target.value)}
+                    placeholder="เช่น ฝรั่งเศส หรือ อาร์เจนตินา" 
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-semibold">ทีมเยือน: <span className="text-rose-400">*</span></label>
+                  <input 
+                    type="text" 
+                    required
+                    value={customAway}
+                    onChange={(e) => setCustomAway(e.target.value)}
+                    placeholder="เช่น เบลเยียม หรือ เปรู" 
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-300 font-semibold">ค่าน้ำชนะ (1X2 Odds):</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  min="1.10"
+                  max="5.00"
+                  value={customOdds}
+                  onChange={(e) => setCustomOdds(e.target.value)}
+                  placeholder="1.55" 
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                />
+                <span className="text-[10px] text-slate-400">แนะนำค่าน้ำ @1.52 - @1.58 เพื่อให้ค่าน้ำรวมสเต็ป 3 ทะลุเกณฑ์ @3.50 เท่า</span>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsCustomModalOpen(false)}
+                  className="px-3 py-2 rounded-lg bg-slate-800 text-slate-300 hover:text-white"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold flex items-center gap-1.5 shadow-md shadow-blue-600/20"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>เพิ่มเข้าสเต็ป 3 ทันที</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Section Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-4 border-b border-slate-800">
