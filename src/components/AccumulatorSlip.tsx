@@ -611,9 +611,9 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
                     <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold border shrink-0 ${
                       isHdpOk
                         ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                        : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                        : 'bg-rose-500/15 text-rose-300 border-rose-500/30'
                     }`}>
-                      {isConsensusOk ? `${m.consensusAgreementRate}% ✅` : 'FILTERED'}
+                      {isHdpOk ? `${m.consensusAgreementRate}% ✅` : '⚠️ เส้นลึก'}
                     </span>
                   </div>
                   <div className={`font-black text-xs ${isSelected ? 'text-white' : 'text-slate-100'}`}>
@@ -623,8 +623,8 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
                     <span className="text-cyan-300 font-bold truncate max-w-[125px]">
                       {favTeam.split(' ')[0]} {hdpLine} @{hdpOdds.toFixed(2)}
                     </span>
-                    <span className="text-emerald-300 font-bold shrink-0">
-                      +{hdpEdge.toFixed(1)}% ({hdpProb}%)
+                    <span className={`${hdpEdge >= 0 ? 'text-emerald-300' : 'text-rose-300'} font-bold shrink-0`}>
+                      {hdpEdge >= 0 ? `+${hdpEdge.toFixed(1)}%` : `${hdpEdge.toFixed(1)}%`} ({hdpProb}%)
                     </span>
                   </div>
                 </button>

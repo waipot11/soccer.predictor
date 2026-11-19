@@ -946,48 +946,48 @@ function getQualifiedPoolForDate(thaiInfo: ThaiDateInfo): {
         awayTeam: 'Servette FCCF W',
         fixedKickOffIso: '2026-11-19T20:00:00.000Z', // 21:00 CET = 03:00 น. เวลาไทย (เช้ามืด 20 พ.ย.)
         stadium: 'Estadi Johan Cruyff, Barcelona',
-        h2hSummary: 'บาร์เซโลน่า หญิง แชมป์ยุโรป เหนือกว่า เซอร์เว็ตต์ ทีมจากสวิตเซอร์แลนด์ทุกขุมกำลัง ยิงในรังยุโรปเฉลี่ย 3.6 ประตู/นัด และคลีนชีตในบ้าน 80%',
+        h2hSummary: 'บาร์เซโลน่า หญิง แชมป์ยุโรป เหนือกว่า เซอร์เว็ตต์ ทีมจากสวิตเซอร์แลนด์ขาดลอย แต่บน 1xBet เปิดราคาต่อลึกสุดขั้ว (-3.75 ถึง -7.25 ไม่มีราคา -2.5)',
         homeForm: ['W', 'W', 'W', 'W', 'W'],
         awayForm: ['L', 'W', 'L', 'D', 'L'],
         homexG: 3.35,
         awayxG: 0.35,
         keyInjuries: 'บาร์เซโลน่า หญิง ชุดใหญ่ครบครัน ไอตานา บอนมาตี, กาโรลีน เกรแฮม ฮันเซน และ เอวา ปายอร์ พร้อมลงล่าสกอร์',
-        recommendedPick: 'FC Barcelona W ต่อ -2.5 (1xBet HDP) @1.85 / Over 2.5 @1.68',
+        recommendedPick: '⚠️ 1xBet ไม่มี -2.5 (เปิดต่ำสุด -3.75 @1.188 / มาตรฐาน -5.25 @1.70) — แนะนำข้าม HDP คู่นี้ไปเล่น Bayern -1.5 / Lyon -0.75',
         individualWinProbability: 99.4,
         decimalOdds: 1.06,
-        x2Odds1xBet: 1.016,
-        hdpLine1xBet: '-2.5',
-        hdpOdds1xBet: 1.85,
-        predictedExactScore: '3 - 0',
+        x2Odds1xBet: 1.032,
+        hdpLine1xBet: '-5.25',
+        hdpOdds1xBet: 1.70,
+        predictedExactScore: '5 - 0',
         secondaryExactScore: '4 - 0',
-        exactScoreOdds: 6.00,
-        secondaryOdds: 6.50,
-        poissonProb: 34.2,
+        exactScoreOdds: 6.50,
+        secondaryOdds: 6.00,
+        poissonProb: 26.8,
         f1PoissonScore: 99.4,
         f2CleanSheetScore: 99.2,
         f3H2HScore: 99.0,
         f4xGScore: 99.6,
         f5LineupScore: 99.3,
         customScoreMatrix: [
-          { score: '3 - 0', probability: 34.2, odds: 6.00, isPrimary: true },
-          { score: '4 - 0', probability: 25.8, odds: 6.50, isPrimary: false, isSecondaryHedge: true },
-          { score: '2 - 0', probability: 22.4, odds: 7.50, isPrimary: false },
-          { score: '3 - 1', probability: 11.2, odds: 9.50, isPrimary: false },
-          { score: '5 - 0', probability: 6.4, odds: 8.50, isPrimary: false },
+          { score: '5 - 0', probability: 26.8, odds: 6.50, isPrimary: true },
+          { score: '4 - 0', probability: 25.4, odds: 6.00, isPrimary: false, isSecondaryHedge: true },
+          { score: '6 - 0', probability: 19.8, odds: 8.50, isPrimary: false },
+          { score: '3 - 0', probability: 16.5, odds: 7.50, isPrimary: false },
+          { score: '5 - 1', probability: 11.5, odds: 11.00, isPrimary: false },
         ],
         oneXBetVerified: {
           isCrossChecked: true,
           kickOffDisplay1xBet: '20.11.2026 (03:00 น. ไทย)',
-          marketName: 'UEFA Women\'s Champions League MD5 (Verified UEFA.com)',
+          marketName: 'UEFA Women\'s Champions League MD5 (Verified 1xBet App)',
           exactScoresOdds1xBet: [
-            { score: '3 - 0', odds: 6.00 },
-            { score: '4 - 0', odds: 6.50 },
-            { score: '2 - 0', odds: 7.50 },
-            { score: '3 - 1', odds: 9.50 },
+            { score: '5 - 0', odds: 6.50 },
+            { score: '4 - 0', odds: 6.00 },
+            { score: '6 - 0', odds: 8.50 },
+            { score: '3 - 0', odds: 7.50 },
           ],
-          verificationNote: 'ยืนยันตารางแข่งขันจริงจาก UEFA.com: Barcelona W พบ Servette W (21:00 CET = 03:00 น. เวลาไทย)',
+          verificationNote: 'ราคา 1xBet จริงจากแอป: 1X @1.032 | HDP: -3.75 @1.188 · -4.25 @1.32 · -4.75 @1.48 · -5.25 @1.70 · -5.75 @1.98 · -6.25 @2.375 · -6.75 @2.875 · -7.25 @3.58 (ไม่มี -2.5)',
         },
-        aiRationale: 'ผ่านตัวกรอง Consensus >98%: บาร์เซโลนา หญิง xG 3.35 vs 0.35 แต่ราคา 1X เหลือ 1.016 จึงย้ายมาเล่น Asian Handicap 1xBet ต่อ -2.5 @1.85 หรือ Over 2.5 @1.68 ให้ผลตอบแทนคุ้มค่ากว่าชัดเจน',
+        aiRationale: 'เช็กหน้ากระดาน 1xBet จริงแล้ว: 1X จ่ายแค่ @1.032 และแท็บเอเชียนแฮนดิแคป 1xBet เปิดเฉพาะราคา .25/.75 ตั้งแต่ -3.75 @1.188 จนถึง -7.25 (ราคาหลัก -5.25 @1.70) ต้องยิงห่าง 6 ลูกจึงกินเต็ม เสี่ยงทีมต่อผ่อนเกม แนะนำข้ามไปเล่น Lyon -0.75 / Paris FC -1.25 แทน!',
       }),
       createRealMatch({
         id: 'real-uwcl-20261119-wien-bayern',
@@ -997,48 +997,48 @@ function getQualifiedPoolForDate(thaiInfo: ThaiDateInfo): {
         awayTeam: 'FC Bayern München W',
         fixedKickOffIso: '2026-11-19T17:45:00.000Z', // 18:45 CET = 00:45 น. เวลาไทย
         stadium: 'Franz Horr Stadium, Vienna',
-        h2hSummary: 'บาเยิร์น มิวนิค หญิง เกมเยือนยุโรปดุดัน ยิงเฉลี่ย 2.8 ประตูต่อนัด เจอออสเตรีย เวียนนา ที่เสียประตูให้ทีมท็อป 4 ยุโรปเกิน 2 ลูกทุกเกม',
+        h2hSummary: 'บาเยิร์น มิวนิค หญิง เหนือกว่าชัดเจน แต่แท็บเอเชียนแฮนดิแคป 1xBet เปิดเฉพาะเส้น .25/.75 โดยไม่มี -1.5 (มี -1.25 @1.17, -1.75 @1.33, -2.25 @1.57 และตัวหลัก -2.75 @1.90)',
         homeForm: ['W', 'L', 'D', 'W', 'L'],
         awayForm: ['W', 'W', 'W', 'W', 'D'],
         homexG: 0.55,
         awayxG: 2.75,
         keyInjuries: 'บาเยิร์น หญิง นำโดย เพอร์นิล ฮาร์เดอร์, คลาร่า บูห์ล และ จอร์เจีย สแตนเวย์',
-        recommendedPick: 'FC Bayern München W ต่อ -1.5 (1xBet HDP) @1.80 / Over 2.5 @1.68',
+        recommendedPick: '⚠️ 1xBet เอเชียนแฮนดิแคปไม่มี -1.5 (มี -1.75 @1.33 · -2.25 @1.57 · หลัก -2.75 @1.90) ต้องยิง 3-4 ลูก — แนะนำ Lyon -0.75 แทน',
         individualWinProbability: 98.9,
         decimalOdds: 1.18,
-        x2Odds1xBet: 1.04,
-        hdpLine1xBet: '-1.5',
-        hdpOdds1xBet: 1.80,
+        x2Odds1xBet: 1.003,
+        hdpLine1xBet: '-2.75',
+        hdpOdds1xBet: 1.90,
         predictedExactScore: '0 - 3',
-        secondaryExactScore: '0 - 2',
+        secondaryExactScore: '0 - 4',
         exactScoreOdds: 6.80,
-        secondaryOdds: 6.40,
-        poissonProb: 31.8,
+        secondaryOdds: 7.50,
+        poissonProb: 28.4,
         f1PoissonScore: 99.1,
         f2CleanSheetScore: 98.8,
         f3H2HScore: 98.6,
         f4xGScore: 99.2,
         f5LineupScore: 98.9,
         customScoreMatrix: [
-          { score: '0 - 3', probability: 31.8, odds: 6.80, isPrimary: true },
-          { score: '0 - 2', probability: 26.5, odds: 6.40, isPrimary: false, isSecondaryHedge: true },
-          { score: '1 - 3', probability: 19.4, odds: 9.00, isPrimary: false },
-          { score: '1 - 2', probability: 13.8, odds: 8.50, isPrimary: false },
-          { score: '0 - 4', probability: 8.5, odds: 9.50, isPrimary: false },
+          { score: '0 - 3', probability: 28.4, odds: 6.80, isPrimary: true },
+          { score: '0 - 4', probability: 22.1, odds: 7.50, isPrimary: false, isSecondaryHedge: true },
+          { score: '0 - 2', probability: 21.5, odds: 6.40, isPrimary: false },
+          { score: '1 - 3', probability: 17.8, odds: 9.00, isPrimary: false },
+          { score: '0 - 5', probability: 10.2, odds: 10.50, isPrimary: false },
         ],
         oneXBetVerified: {
           isCrossChecked: true,
           kickOffDisplay1xBet: '20.11.2026 (00:45 น. ไทย)',
-          marketName: 'UEFA Women\'s Champions League MD5 (Verified UEFA.com)',
+          marketName: 'UEFA Women\'s Champions League MD5 (Verified 1xBet App)',
           exactScoresOdds1xBet: [
             { score: '0 - 3', odds: 6.80 },
+            { score: '0 - 4', odds: 7.50 },
             { score: '0 - 2', odds: 6.40 },
             { score: '1 - 3', odds: 9.00 },
-            { score: '1 - 2', odds: 8.50 },
           ],
-          verificationNote: 'ยืนยันตารางแข่งขันจริงจาก UEFA.com: Austria Wien W พบ Bayern München W (18:45 CET = 00:45 น. เวลาไทย)',
+          verificationNote: 'ราคา 1xBet จริงจากแอป: 2(-0.25) @1.003 · 2(-1.25) @1.17 · 2(-1.75) @1.33 · 2(-2.25) @1.57 · 2(-2.75) @1.90 · 2(-3.25) @2.41 · 2(-3.75) @3.08 (ไม่มี -1.5)',
         },
-        aiRationale: 'ผ่านตัวกรอง Consensus >98% (00:45 น. เวลาไทย): บาเยิร์น หญิง xG 2.75 vs 0.55 เลือกเล่น Asian Handicap 1xBet ต่อ -1.5 @1.80 (โอกาสชนะ ~73% เทียบจุดคุ้มทุน 55.6%) และ Over 2.5 @1.68',
+        aiRationale: 'เช็กหน้ากระดาน 1xBet จริงแล้ว: แท็บเอเชียนแฮนดิแคป 1xBet เปิดเฉพาะเส้น .25/.75 โดยไม่มี -1.5 (ราคา -1.75 จ่ายแค่ @1.33, -2.25 จ่าย @1.57 และราคา 50/50 อยู่ที่ -2.75 @1.90) ซึ่งต้องชนะห่าง 3-4 ลูก เสี่ยงเกมเยือนผ่อนคันเร่ง จึงจัดอันดับให้ OL Lyonnes -0.75 เป็นตัวหลักแทน!',
       }),
       createRealMatch({
         id: 'real-uwcl-20261119-parisfc-koge',
@@ -1521,49 +1521,61 @@ function computeSafeHdpMetrics(
   const xgDiff = Math.abs(homexG - awayxG);
   const favTeam = isHomeFav ? homeTeam : awayTeam;
 
+  // 1xBet "เอเชียนแฮนดิแคป" exclusively uses quarter-ball lines (.25 and .75) — never .0 or .5
   const handicapLine =
     hdpLine1xBet && hdpLine1xBet.trim().length > 0
       ? hdpLine1xBet.trim()
       : xgDiff >= 2.2
-      ? '-2.5'
+      ? '-2.75'
       : xgDiff >= 1.5
-      ? '-1.5'
+      ? '-1.75'
       : xgDiff >= 0.85
-      ? '-1.0'
+      ? '-1.25'
       : xgDiff >= 0.45
       ? '-0.75'
       : '-0.25';
 
+  const absLine = Math.abs(parseFloat(handicapLine) || 0.75);
+
   const handicapOdds =
-    typeof hdpOdds1xBet === 'number' && hdpOdds1xBet >= 1.25 && hdpOdds1xBet <= 3.5
+    typeof hdpOdds1xBet === 'number' && hdpOdds1xBet >= 1.15 && hdpOdds1xBet <= 4.0
       ? parseFloat(hdpOdds1xBet.toFixed(3))
-      : parseFloat((xgDiff >= 2.0 ? 1.85 : xgDiff >= 0.5 ? 1.82 : 1.76).toFixed(2));
+      : parseFloat((xgDiff >= 2.0 ? 1.88 : xgDiff >= 0.5 ? 1.82 : 1.76).toFixed(2));
 
   const hdpBreakEvenWinRate = parseFloat(((1 / Math.max(1.05, handicapOdds)) * 100).toFixed(1));
 
-  // Honest 1xBet Asian Handicap cover probability (reflects ~70.4% 30-day real HDP win rate, boosted slightly when -0.75 / -1.0 cushion applies, never fabricated at 98%)
-  const cushionBonus = handicapLine.includes('0.75') ? 3.2 : handicapLine === '-1.0' ? 2.4 : handicapLine.includes('0.25') ? 1.5 : 0;
-  const rawHdpProb = Math.min(76.8, Math.max(63.5, 63.5 + xgDiff * 3.8 + cushionBonus + (decimalOdds <= 1.75 ? 1.8 : 0)));
+  // Honest 1xBet Asian Handicap cover probability:
+  // Deep blowout handicaps (absLine >= 2.5, e.g. Bayern -2.75 @1.90 or Barcelona -5.25 @1.70) require 3-6+ goal margins with high rotation variance (~53%-57.5% realistic cover).
+  // Clean playable quarter lines (-0.25 to -1.75) on >98% consensus mismatches yield ~66%-73% cover.
+  let rawHdpProb: number;
+  if (absLine >= 2.5) {
+    rawHdpProb = Math.min(58.5, Math.max(44.0, 58.2 - (absLine - 2.75) * 1.9));
+  } else {
+    const cushionBonus = handicapLine.includes('0.75') ? 3.4 : handicapLine.includes('0.25') ? 1.8 : 0.6;
+    rawHdpProb = Math.min(73.8, Math.max(63.5, 63.8 + xgDiff * 3.5 + cushionBonus + (decimalOdds <= 1.75 ? 1.8 : 0)));
+  }
+
   const handicapProb = parseFloat(rawHdpProb.toFixed(1));
   const hdpEdgePercent = parseFloat((handicapProb - hdpBreakEvenWinRate).toFixed(1));
 
   const isConsensusOk = consensusRate >= 98.0 && convergenceRate >= 98.0;
-  const isValueHdpQualified = isConsensusOk && handicapOdds >= 1.65 && handicapOdds <= 2.15 && hdpEdgePercent >= 8.0;
+  // Require clean playable 1xBet quarter line (absLine <= 2.0), positive value odds (1.65 - 2.15), and genuine positive edge >= 8%
+  const isValueHdpQualified = isConsensusOk && absLine <= 2.0 && handicapOdds >= 1.65 && handicapOdds <= 2.15 && hdpEdgePercent >= 8.0;
 
   return {
     handicapLine,
-    handicapPick: `${favTeam} ต่อ ${handicapLine} (1xBet HDP)`,
+    handicapPick: `${favTeam} ต่อ ${handicapLine} (1xBet เอเชียนแฮนดิแคป)`,
     handicapOdds,
     handicapProb,
     hdpBreakEvenWinRate,
     hdpEdgePercent,
-    isVerified1xBetHdp: typeof hdpOdds1xBet === 'number' && hdpOdds1xBet >= 1.25,
+    isVerified1xBetHdp: typeof hdpOdds1xBet === 'number' && hdpOdds1xBet >= 1.15,
     isValueHdpQualified,
   };
 }
 
 function selectPrimarySuperGoldenMatch(pool: MatchFixture[]): MatchFixture {
-  // Strictly keep Consensus >98.0% & Convergence >98.0% filter, then pick highest positive Asian Handicap Edge on 1xBet
+  // Strictly keep Consensus >98.0% & Convergence >98.0% filter, and prioritize clean playable 1xBet .25/.75 quarter lines (-0.25 to -1.75) over deep blowout lines (<= -2.5)
   const consensusQualified = pool.filter(
     (m) => m.consensusAgreementRate >= 98.0 && m.convergenceRate >= 98.0
   );
@@ -1593,9 +1605,11 @@ function selectPrimarySuperGoldenMatch(pool: MatchFixture[]): MatchFixture {
         b.hdpLine1xBet,
         b.hdpOdds1xBet
       );
-      // Prefer -0.75 / -1.0 / -1.5 clean HDP lines with strongest mathematical edge
-      const scoreA = ha.hdpEdgePercent + (ha.handicapLine === '-0.75' || ha.handicapLine === '-1.0' ? 2.5 : 0);
-      const scoreB = hb.hdpEdgePercent + (hb.handicapLine === '-0.75' || hb.handicapLine === '-1.0' ? 2.5 : 0);
+      // Qualified clean playable quarter lines first, prefer -0.75 (half-win on 1-goal win!) + strongest edge
+      const lineBonusA = ha.handicapLine === '-0.75' ? 4.0 : ha.handicapLine === '-1.25' ? 1.5 : 0;
+      const lineBonusB = hb.handicapLine === '-0.75' ? 4.0 : hb.handicapLine === '-1.25' ? 1.5 : 0;
+      const scoreA = (ha.isValueHdpQualified ? 100 : 0) + ha.hdpEdgePercent + lineBonusA;
+      const scoreB = (hb.isValueHdpQualified ? 100 : 0) + hb.hdpEdgePercent + lineBonusB;
       return scoreB - scoreA;
     })[0] || pool[0]
   );
@@ -1671,9 +1685,12 @@ function buildMarketRecommendations(match: MatchFixture, pool: MatchFixture[] = 
     match.hdpOdds1xBet
   );
 
+  const absLine = Math.abs(parseFloat(hdpMetrics.handicapLine) || 0.75);
   const hdpFilterNote = hdpMetrics.isValueHdpQualified
-    ? `✅ ผ่านตัวกรอง Consensus >98% (${match.consensusAgreementRate}%) · 1xBet HDP จ่าย @${hdpMetrics.handicapOdds.toFixed(2)} (จุดคุ้มทุน ${hdpMetrics.hdpBreakEvenWinRate}% vs โอกาสเข้าจริง ${hdpMetrics.handicapProb}% · Edge +${hdpMetrics.hdpEdgePercent}%)`
-    : `⚠️ คู่นี้ Edge HDP อยู่ที่ +${hdpMetrics.hdpEdgePercent}% (แนะนำลดขนาดไม้หรือเลือก Over Score คู่กัน)`;
+    ? `✅ ผ่านตัวกรอง Consensus >98% (${match.consensusAgreementRate}%) · 1xBet เอเชียนแฮนดิแคป (${hdpMetrics.handicapLine}) จ่าย @${hdpMetrics.handicapOdds.toFixed(2)} (จุดคุ้มทุน ${hdpMetrics.hdpBreakEvenWinRate}% vs โอกาสเข้าจริง ${hdpMetrics.handicapProb}% · Edge +${hdpMetrics.hdpEdgePercent}%)`
+    : absLine >= 2.5
+    ? `🚫 เส้นต่อ 1xBet ลึกเกินเกณฑ์ (${hdpMetrics.handicapLine} @${hdpMetrics.handicapOdds.toFixed(2)} · คุ้มทุน ${hdpMetrics.hdpBreakEvenWinRate}% vs โอกาสเข้า ~${hdpMetrics.handicapProb}%) — แท็บเอเชียนแฮนดิแคป 1xBet เปิดเฉพาะ .25/.75 และคู่นี้ต้องยิงขาด 3-6 ลูก แนะนำข้ามไปเล่น OL Lyonnes -0.75 หรือ Paris FC -1.25 แทน`
+    : `⚠️ คู่นี้ Edge HDP อยู่ที่ ${hdpMetrics.hdpEdgePercent >= 0 ? `+${hdpMetrics.hdpEdgePercent}%` : `${hdpMetrics.hdpEdgePercent}%`} (แนะนำลดขนาดไม้หรือเลือก Over Score คู่กัน)`;
 
   const overLine = totalXg >= 2.75 ? 'Over 2.5 ประตู' : 'Over 1.5 ประตู';
   const overScorePick = `สกอร์สูง (${overLine})`;
@@ -2815,8 +2832,8 @@ app.post('/api/football/update-x2-odds', (req, res) => {
 app.post('/api/football/update-hdp-odds', (req, res) => {
   const { matchId, hdpLine1xBet, hdpOdds1xBet } = req.body || {};
   const parsedOdds = Number(hdpOdds1xBet);
-  if (!parsedOdds || parsedOdds < 1.25 || parsedOdds > 3.5) {
-    res.status(400).json({ error: 'กรุณาระบุค่าน้ำ 1xBet Handicap จริงให้ถูกต้อง (เช่น 1.82 หรือ 1.90)' });
+  if (!parsedOdds || parsedOdds < 1.15 || parsedOdds > 4.0) {
+    res.status(400).json({ error: 'กรุณาระบุค่าน้ำ 1xBet Handicap จริงให้ถูกต้อง (เช่น 1.188, 1.70, 1.82 หรือ 1.98)' });
     return;
   }
 

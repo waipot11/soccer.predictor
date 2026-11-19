@@ -182,8 +182,13 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                 </div>
 
                 <div className="text-[10px] text-emerald-300 bg-emerald-950/50 border border-emerald-500/30 rounded-lg px-2.5 py-1.5 flex items-center justify-between">
-                  <span>คุ้มทุน: <strong className="font-mono">{mkt?.handicapBreakEvenWinRate ?? match?.hdpBreakEvenRate ?? 54.9}%</strong></span>
-                  <span>Edge เชิงคณิตศาสตร์: <strong className="font-mono text-amber-300">+{(mkt?.handicapEdgePercent ?? match?.hdpEdgePercent ?? 18.5).toFixed(1)}%</strong></span>
+                  <span>คุ้มทุน: <strong className="font-mono">{mkt?.handicapBreakEvenWinRate ?? match?.hdpBreakEvenRate ?? 55.6}%</strong></span>
+                  {(() => {
+                    const edgeVal = mkt?.handicapEdgePercent ?? match?.hdpEdgePercent ?? 18.1;
+                    return (
+                      <span>Edge เชิงคณิตศาสตร์: <strong className={`font-mono ${edgeVal >= 0 ? 'text-amber-300' : 'text-rose-300'}`}>{edgeVal >= 0 ? `+${edgeVal.toFixed(1)}%` : `${edgeVal.toFixed(1)}%`}</strong></span>
+                    );
+                  })()}
                 </div>
 
                 <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs">
