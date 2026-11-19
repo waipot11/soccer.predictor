@@ -3004,6 +3004,7 @@ app.post('/api/football/reset-win-stats', (_req, res) => {
 
 // 14. 24/7 Keep-Alive & Health Check Endpoint (Optimized for Render.com + UptimeRobot)
 app.all(['/api/health', '/api/cron', '/api/cron-check'], (req, res) => {
+  ensureDailyCycleSynchronized(false);
   const triggerSource = req.query.source ? String(req.query.source) : 'UPTIMEROBOT_PING';
   const cronEvaluation = checkAndTriggerAutoPost(triggerSource);
   const telegramEvaluation = checkAndTriggerDaily0630Telegram(triggerSource);
