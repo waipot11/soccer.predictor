@@ -543,3 +543,29 @@ export interface LiveChannel {
   streamSourceType?: 'VIDEO' | 'EMBED' | 'RADAR';
   kickoffTime?: string;
 }
+
+export interface RandomPickOneXBetCriteria {
+  requireQuarterLine: boolean;
+  maxAbsHdpLine: number;
+  minHdpOdds: number;
+  maxHdpOdds: number;
+  minEdgePercent: number;
+  requireConsensus98: boolean;
+}
+
+export interface OneXBetFilterReport {
+  criteriaUsed: RandomPickOneXBetCriteria;
+  totalEvaluated: number;
+  qualifiedCount: number;
+  qualifiedIds: string[];
+  excludedDetails: {
+    matchId: string;
+    matchLabel: string;
+    hdpLine: string;
+    hdpOdds: number;
+    edgePercent: number;
+    reasonThai: string;
+  }[];
+  fallbackUsed: boolean;
+}
+

@@ -11,7 +11,7 @@ import { MatchDetailModal } from './components/MatchDetailModal';
 import { FacebookAutomationPanel } from './components/FacebookAutomationPanel';
 import { PerformanceAudit } from './components/PerformanceAudit';
 import { LiveSportsChannel } from './components/LiveSportsChannel';
-import { AccumulatorTicket, FacebookConfig, MatchFixture, PostLog, CorrectScoreTip, PastMatchAudit, MonthlyMarketComparisonData } from './types';
+import { AccumulatorTicket, FacebookConfig, MatchFixture, PostLog, CorrectScoreTip, PastMatchAudit, MonthlyMarketComparisonData, RandomPickOneXBetCriteria, OneXBetFilterReport } from './types';
 import { CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function App() {
@@ -31,6 +31,15 @@ export default function App() {
   const [isSyncingReal, setIsSyncingReal] = useState<boolean>(false);
   const [isPosting, setIsPosting] = useState<boolean>(false);
   const [isRandomPicking, setIsRandomPicking] = useState<boolean>(false);
+  const [oneXBetRandomCriteria, setOneXBetRandomCriteria] = useState<RandomPickOneXBetCriteria>({
+    requireQuarterLine: true,
+    maxAbsHdpLine: 2.0,
+    minHdpOdds: 1.65,
+    maxHdpOdds: 2.15,
+    minEdgePercent: 8.0,
+    requireConsensus98: true,
+  });
+  const [oneXBetFilterReport, setOneXBetFilterReport] = useState<OneXBetFilterReport | null>(null);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
@@ -108,22 +117,29 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Randomly pick the best match with factor convergence >98%
-  const handleRandomBestPick = async () => {
+  // Randomly pick the best match with factor convergence >98% AND 1xBet market criteria
+  const handleRandomBestPick = async (overrideCriteria?: RandomPickOneXBetCriteria) => {
+    const criteriaToUse = overrideCriteria || oneXBetRandomCriteria;
     try {
       setIsRandomPicking(true);
       const res = await fetch('/api/football/random-best-pick', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ excludeId: correctScoreTip?.selectedMatch?.id }),
+        body: JSON.stringify({
+          excludeId: correctScoreTip?.selectedMatch?.id,
+          oneXBetCriteria: criteriaToUse,
+        }),
       });
       const data = await res.json();
       if (data.success && data.tip) {
         setCorrectScoreTip(data.tip);
+        if (data.oneXBetFilterReport) {
+          setOneXBetFilterReport(data.oneXBetFilterReport);
+        }
         if (accumulator) {
           setAccumulator({ ...accumulator, correctScoreTip: data.tip });
         }
-        showToast(`🎲 ${data.message || 'สุ่มเลือกคู่ที่ดีที่สุดสำเร็จ!'}`);
+        showToast(`🎲 ${data.message || 'สุ่มเลือกคู่ 1xBet HDP (>98%) สำเร็จ!'}`);
       }
     } catch (err) {
       console.error('Random pick error:', err);
@@ -488,7 +504,7 @@ export default function App() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onAnalyzeAI={handleAnalyzeAI}
-        onRandomPick={handleRandomBestPick}
+        onRandomPick={() => handleRandomBestPick()}
         isAnalyzing={isAnalyzing}
         isRandomPicking={isRandomPicking}
       />
@@ -510,7 +526,7 @@ export default function App() {
           setActiveTab('live');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
-        onRandomPick={handleRandomBestPick}
+        onRandomPick={() => handleRandomBestPick()}
         isRandomPicking={isRandomPicking}
       />
 
@@ -526,8 +542,11 @@ export default function App() {
             marketComparison={marketComparison}
             onSelectMatchDetail={(m) => setSelectedMatch(m)}
             onSelectMatch={handleSelectMatch}
-            onRandomBestPick={handleRandomBestPick}
+            onRandomBestPick={(c) => handleRandomBestPick(c)}
             isRandomPicking={isRandomPicking}
+            oneXBetRandomCriteria={oneXBetRandomCriteria}
+            onUpdateOneXBetRandomCriteria={setOneXBetRandomCriteria}
+            oneXBetFilterReport={oneXBetFilterReport}
             onSwapLeg={handleSwapLeg}
             onAnalyzeAI={handleAnalyzeAI}
             isAnalyzing={isAnalyzing}

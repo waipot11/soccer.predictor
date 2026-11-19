@@ -27,7 +27,7 @@ import {
   Filter,
   AlertCircle
 } from 'lucide-react';
-import { AccumulatorTicket, MatchFixture, CorrectScoreTip, ConvergenceFactor, CorrectScoreMatrixItem, ConsensusInstitute, MonthlyMarketComparisonData } from '../types';
+import { AccumulatorTicket, MatchFixture, CorrectScoreTip, ConvergenceFactor, CorrectScoreMatrixItem, ConsensusInstitute, MonthlyMarketComparisonData, RandomPickOneXBetCriteria, OneXBetFilterReport } from '../types';
 
 interface AccumulatorSlipProps {
   accumulator: AccumulatorTicket;
@@ -38,8 +38,11 @@ interface AccumulatorSlipProps {
   marketComparison?: MonthlyMarketComparisonData | null;
   onSelectMatchDetail: (match: MatchFixture) => void;
   onSelectMatch: (matchId: string) => void;
-  onRandomBestPick: () => void;
+  onRandomBestPick: (overrideCriteria?: RandomPickOneXBetCriteria) => void;
   isRandomPicking?: boolean;
+  oneXBetRandomCriteria?: RandomPickOneXBetCriteria;
+  onUpdateOneXBetRandomCriteria?: (criteria: RandomPickOneXBetCriteria) => void;
+  oneXBetFilterReport?: OneXBetFilterReport | null;
   onSwapLeg: (currentId: string, reserveId: string) => void;
   onAnalyzeAI: () => void;
   isAnalyzing: boolean;
@@ -69,6 +72,9 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
   onSelectMatch,
   onRandomBestPick,
   isRandomPicking = false,
+  oneXBetRandomCriteria,
+  onUpdateOneXBetRandomCriteria,
+  oneXBetFilterReport,
   onSwapLeg,
   onAnalyzeAI,
   isAnalyzing,
@@ -413,13 +419,13 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
         <div className="flex items-center gap-2.5 flex-wrap self-end md:self-auto shrink-0">
           {/* Random Best Match Picker Button */}
           <button
-            onClick={onRandomBestPick}
+            onClick={() => onRandomBestPick()}
             disabled={isRandomPicking}
             className="text-xs px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black transition-all shadow-lg shadow-amber-500/20 cursor-pointer flex items-center gap-2 whitespace-nowrap disabled:opacity-50"
-            title="สุ่มเลือกคู่ที่ผ่านฉันทามติ 100 สถาบันสถิติสากลเกิน 98.0%"
+            title="สุ่มเลือกคู่ที่ผ่านเงื่อนไข 1xBet HDP + ฉันทามติ 100 สถาบันเกิน 98.0%"
           >
             <Dices className={`w-4 h-4 ${isRandomPicking ? 'animate-spin' : ''}`} />
-            <span>{isRandomPicking ? 'กำลังสุ่มคู่ใหม่...' : '🎲 สุ่มคู่ซูเปอร์โกลเด้นสลิป (100 สถาบัน >98%)'}</span>
+            <span>{isRandomPicking ? 'กำลังสุ่มคู่ใหม่...' : '🎲 สุ่มคู่ 1xBet HDP (กรอง >98%)'}</span>
           </button>
 
           {/* Sync Real Schedule with Gemini Grounding */}
@@ -573,17 +579,152 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
         </div>
       </div>
 
-      {/* 1xBet Real Fixtures Quick Selector (Consensus >98% + Asian Handicap Edge) */}
-      {qualifiedPool && qualifiedPool.length > 1 && (
-        <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
-            <span className="font-extrabold text-cyan-300 flex items-center gap-1.5">
-              <span>⚖️ เลือกคู่แข่งขันจริง (กรอง Consensus &gt;98.0% · อิงราคา 1xBet Asian Handicap):</span>
-            </span>
-            <span className="text-[10px] text-emerald-400 font-mono">จัดอันดับตาม Edge เชิงคณิตศาสตร์ + ฉันทามติ &gt;98%</span>
-          </div>
+      {/* 1xBet Random Criteria Filter Bar + Real Fixtures Quick Selector */}
+      {qualifiedPool && qualifiedPool.length > 0 && (() => {
+        const activeCriteria: RandomPickOneXBetCriteria = oneXBetRandomCriteria || {
+          requireQuarterLine: true,
+          maxAbsHdpLine: 2.0,
+          minHdpOdds: 1.65,
+          maxHdpOdds: 2.15,
+          minEdgePercent: 8.0,
+          requireConsensus98: true,
+        };
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-xs">
+        const updateCriteria = (patch: Partial<RandomPickOneXBetCriteria>) => {
+          if (onUpdateOneXBetRandomCriteria) {
+            onUpdateOneXBetRandomCriteria({ ...activeCriteria, ...patch });
+          }
+        };
+
+        const evalPool = qualifiedPool.map((m) => {
+          const line = m.hdpLine1xBet || '-0.75';
+          const absLine = Math.abs(parseFloat(line) || 0.75);
+          const odds = m.hdpOdds1xBet ?? m.hdpEstimatedOdds ?? 1.82;
+          const prob = m.hdpEstimatedProb ?? 70.9;
+          const edge = m.hdpEdgePercent ?? parseFloat((prob - (1 / Math.max(1.01, odds)) * 100).toFixed(1));
+          const isQuarter = line.endsWith('.25') || line.endsWith('.75');
+          const isConsOk = !activeCriteria.requireConsensus98 || (m.consensusAgreementRate >= 98.0 && m.convergenceRate >= 98.0);
+          const isDepthOk = activeCriteria.maxAbsHdpLine >= 10 || absLine <= activeCriteria.maxAbsHdpLine;
+          const isQuarterOk = !activeCriteria.requireQuarterLine || isQuarter;
+          const isOddsOk = odds >= activeCriteria.minHdpOdds && odds <= activeCriteria.maxHdpOdds;
+          const isEdgeOk = edge >= activeCriteria.minEdgePercent;
+          return {
+            m,
+            line,
+            odds,
+            edge,
+            passed: isConsOk && isDepthOk && isQuarterOk && isOddsOk && isEdgeOk,
+          };
+        });
+        const passedCount = evalPool.filter((e) => e.passed).length;
+
+        return (
+          <div className="p-4 rounded-2xl bg-slate-900/90 border border-cyan-500/35 space-y-3 shadow-lg">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 pb-2.5 border-b border-slate-800">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-black text-cyan-300 flex items-center gap-1.5">
+                  <Filter className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>🎯 เงื่อนไขสุ่มเลือกอิงกระดาน 1xBet (พร้อมตัวกรอง &gt;98.0%):</span>
+                </span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-black border ${
+                  passedCount > 0
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                    : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                }`}>
+                  ผ่านเกณฑ์สุ่ม 1xBet: {passedCount}/{qualifiedPool.length} คู่
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onRandomBestPick(activeCriteria)}
+                disabled={isRandomPicking}
+                className="text-xs px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black transition-all cursor-pointer flex items-center gap-1.5 self-start lg:self-auto disabled:opacity-50 shadow-md shadow-amber-500/20"
+              >
+                <Dices className={`w-3.5 h-3.5 ${isRandomPicking ? 'animate-spin' : ''}`} />
+                <span>{isRandomPicking ? 'กำลังสุ่มตามเงื่อนไข...' : '🎲 สุ่มตามเงื่อนไข 1xBet ที่ตั้งไว้'}</span>
+              </button>
+            </div>
+
+            {/* 1xBet Criteria Selector Controls */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
+              <label className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between gap-2 cursor-pointer hover:border-cyan-500/40">
+                <div>
+                  <span className="font-bold text-slate-200 block">ราคา .25 / .75 บน 1xBet</span>
+                  <span className="text-[10px] text-slate-400">เฉพาะเส้นที่มีในแท็บเอเชียนฯ 1xBet</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={activeCriteria.requireQuarterLine}
+                  onChange={(e) => updateCriteria({ requireQuarterLine: e.target.checked })}
+                  className="w-4 h-4 rounded bg-slate-800 border-slate-700 text-cyan-400"
+                />
+              </label>
+
+              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 block">เพดานราคาต่อลึกสุดบน 1xBet:</label>
+                <select
+                  value={activeCriteria.maxAbsHdpLine}
+                  onChange={(e) => updateCriteria({ maxAbsHdpLine: Number(e.target.value) })}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-cyan-300 font-bold focus:outline-none focus:border-cyan-400"
+                >
+                  <option value={1.25}>ไม่เกิน -1.25 (เซฟตี้สุด)</option>
+                  <option value={2.0}>ไม่เกิน -2.00 (แนะนำ · ตัด -2.75/-5.25)</option>
+                  <option value={3.0}>ไม่เกิน -3.00 (รวม -2.75 บาเยิร์น)</option>
+                  <option value={10}>ไม่จำกัดความลึกเส้นต่อ</option>
+                </select>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 block">ช่วงค่าน้ำ 1xBet HDP:</label>
+                <select
+                  value={`${activeCriteria.minHdpOdds}-${activeCriteria.maxHdpOdds}`}
+                  onChange={(e) => {
+                    const [minO, maxO] = e.target.value.split('-').map(Number);
+                    updateCriteria({ minHdpOdds: minO, maxHdpOdds: maxO });
+                  }}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-emerald-300 font-bold focus:outline-none focus:border-cyan-400"
+                >
+                  <option value="1.65-2.15">@1.65 - @2.15 (คุ้มทุนมาตรฐาน)</option>
+                  <option value="1.78-2.15">@1.78 - @2.15 (เน้นน้ำดีพิเศษ)</option>
+                  <option value="1.50-2.30">@1.50 - @2.30 (เปิดกว้าง)</option>
+                </select>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 block">Edge ต่ำสุด (เหนือจุดคุ้มทุน):</label>
+                <select
+                  value={activeCriteria.minEdgePercent}
+                  onChange={(e) => updateCriteria({ minEdgePercent: Number(e.target.value) })}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-amber-300 font-bold focus:outline-none focus:border-cyan-400"
+                >
+                  <option value={8}>+8.0% ขึ้นไป (แนะนำ)</option>
+                  <option value={12}>+12.0% ขึ้นไป (คัดเข้ม)</option>
+                  <option value={15}>+15.0% ขึ้นไป (เฉพาะหัวกะทิ)</option>
+                  <option value={0}>0% (เพียงคุ้มทุน)</option>
+                </select>
+              </div>
+            </div>
+
+            {oneXBetFilterReport && oneXBetFilterReport.excludedDetails.length > 0 && (
+              <div className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800/90 text-[11px] text-slate-300 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="font-bold text-amber-300">🚫 คู่ที่ถูกคัดออกจากวงสุ่ม 1xBet:</span>
+                {oneXBetFilterReport.excludedDetails.map((ex) => (
+                  <span key={ex.matchId} className="text-rose-300/90">
+                    • <b className="text-slate-200">{ex.matchLabel}</b> ({ex.hdpLine} @{ex.hdpOdds.toFixed(2)} — {ex.reasonThai})
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs pt-1">
+              <span className="font-extrabold text-cyan-300 flex items-center gap-1.5">
+                <span>⚖️ คู่แข่งขันจริงในรายการ (คลิกเลือกเองได้ หรือสุ่มตามเกณฑ์ด้านบน):</span>
+              </span>
+              <span className="text-[10px] text-emerald-400 font-mono">ฉันทามติ &gt;98% + เอเชียนแฮนดิแคป 1xBet</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-xs">
             {qualifiedPool.map((m) => {
               const isSelected = m.id === match?.id;
               const favTeam = m.homexG >= m.awayxG ? m.homeTeam : m.awayTeam;
@@ -630,9 +771,10 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
                 </button>
               );
             })}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Main Super Golden Match Card */}
       {match && (
@@ -1920,12 +2062,12 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
 
             <div className="flex items-center gap-2 flex-wrap">
               <button
-                onClick={onRandomBestPick}
+                onClick={() => onRandomBestPick()}
                 disabled={isRandomPicking}
                 className="text-xs px-3.5 py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-bold transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <Dices className="w-3.5 h-3.5" />
-                <span>สุ่มคู่อื่นที่ผ่านเกณฑ์ 100 สถาบัน</span>
+                <span>สุ่มคู่อื่นตามเกณฑ์ 1xBet (&gt;98%)</span>
               </button>
 
               {onNavigateToLive && (
@@ -1966,12 +2108,12 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
           </div>
 
           <button
-            onClick={onRandomBestPick}
+            onClick={() => onRandomBestPick()}
             disabled={isRandomPicking}
             className="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
           >
             <Dices className="w-3.5 h-3.5 text-amber-400" />
-            <span>สุ่มคู่อื่นอัตโนมัติ</span>
+            <span>สุ่มคู่อื่นตามเกณฑ์ 1xBet</span>
           </button>
         </div>
 

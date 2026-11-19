@@ -1834,31 +1834,124 @@ function buildCorrectScoreTip(match: MatchFixture, thaiInfo: ThaiDateInfo = curr
   };
 }
 
-// Function to select random best match prioritizing Consensus >98% & strongest 1xBet Asian Handicap edge
-function getRandomBestMatch(excludeId?: string): MatchFixture {
-  const hdpEligible = realQualifiedPool.filter(
-    (m) =>
-      m.consensusAgreementRate >= 98.0 &&
-      m.convergenceRate >= 98.0 &&
-      m.isValueHdpQualified !== false &&
-      new Date(m.kickOffTime).getTime() > Date.now() &&
-      (!excludeId || m.id !== excludeId)
+export interface RandomPickOneXBetCriteria {
+  requireQuarterLine: boolean;
+  maxAbsHdpLine: number;
+  minHdpOdds: number;
+  maxHdpOdds: number;
+  minEdgePercent: number;
+  requireConsensus98: boolean;
+}
+
+const DEFAULT_1XBET_RANDOM_CRITERIA: RandomPickOneXBetCriteria = {
+  requireQuarterLine: true, // แท็บเอเชียนแฮนดิแคป 1xBet ใช้เฉพาะ .25 / .75
+  maxAbsHdpLine: 2.0, // ตัดเส้นลึกเกิน -2.0 (เช่น -2.75 / -5.25) ออก
+  minHdpOdds: 1.65, // ตัดค่าน้ำต่ำกว่า @1.65 (เช่น @1.17 / @1.33) ออก
+  maxHdpOdds: 2.15,
+  minEdgePercent: 8.0, // Edge เชิงคณิตศาสตร์ขั้นต่ำ +8%
+  requireConsensus98: true, // ตัวกรองฉันทามติ >98% เหมือนเดิม
+};
+
+function evaluateMatchAgainst1xBetCriteria(m: MatchFixture, criteria: RandomPickOneXBetCriteria) {
+  const hdp = computeSafeHdpMetrics(
+    m.homexG,
+    m.awayxG,
+    m.decimalOdds,
+    m.homeTeam,
+    m.awayTeam,
+    m.consensusAgreementRate,
+    m.convergenceRate,
+    m.hdpLine1xBet,
+    m.hdpOdds1xBet
   );
-  const eligible =
-    hdpEligible.length > 0
-      ? hdpEligible
-      : realQualifiedPool.filter(
-          (m) =>
-            m.convergenceRate >= 98.0 &&
-            m.consensusAgreementRate >= 98.0 &&
-            new Date(m.kickOffTime).getTime() > Date.now() &&
-            (!excludeId || m.id !== excludeId)
-        );
-  const candidates = eligible.length > 0 ? eligible : realQualifiedPool;
-  const sorted = [...candidates].sort((a, b) => (b.hdpEdgePercent || 0) - (a.hdpEdgePercent || 0) || b.consensusAgreementRate - a.consensusAgreementRate);
-  const topTier = sorted.slice(0, 3);
-  const pick = topTier[Math.floor(Math.random() * topTier.length)];
-  return pick;
+  const absLine = Math.abs(parseFloat(hdp.handicapLine) || 0.75);
+  const isQuarterLine = hdp.handicapLine.endsWith('.25') || hdp.handicapLine.endsWith('.75');
+  const isUpcoming = new Date(m.kickOffTime).getTime() > Date.now();
+  const isConsensusOk = !criteria.requireConsensus98 || (m.consensusAgreementRate >= 98.0 && m.convergenceRate >= 98.0);
+  const isLineDepthOk = criteria.maxAbsHdpLine >= 10 || absLine <= criteria.maxAbsHdpLine;
+  const isQuarterOk = !criteria.requireQuarterLine || isQuarterLine;
+  const isOddsOk = hdp.handicapOdds >= criteria.minHdpOdds && hdp.handicapOdds <= criteria.maxHdpOdds;
+  const isEdgeOk = hdp.hdpEdgePercent >= criteria.minEdgePercent;
+
+  const reasons: string[] = [];
+  if (!isUpcoming) reasons.push('เริ่มแข่งแล้ว');
+  if (!isConsensusOk) reasons.push(`Consensus ${m.consensusAgreementRate}% < 98%`);
+  if (!isQuarterOk) reasons.push(`เส้น ${hdp.handicapLine} ไม่ใช่ .25/.75 บน 1xBet`);
+  if (!isLineDepthOk) reasons.push(`เส้นลึก ${hdp.handicapLine} เกินเพดาน -${criteria.maxAbsHdpLine}`);
+  if (!isOddsOk) reasons.push(`ค่าน้ำ @${hdp.handicapOdds.toFixed(2)} นอกช่วง @${criteria.minHdpOdds}-@${criteria.maxHdpOdds}`);
+  if (!isEdgeOk) reasons.push(`Edge ${hdp.hdpEdgePercent}% < +${criteria.minEdgePercent}%`);
+
+  return {
+    match: m,
+    hdp,
+    passed: reasons.length === 0,
+    reasonThai: reasons.join(' · '),
+  };
+}
+
+// Function to select random best match prioritizing Consensus >98% & strict 1xBet Asian Handicap criteria
+function getRandomBestMatchWithReport(excludeId?: string, rawCriteria?: Partial<RandomPickOneXBetCriteria>) {
+  const criteria: RandomPickOneXBetCriteria = {
+    requireQuarterLine: rawCriteria?.requireQuarterLine ?? DEFAULT_1XBET_RANDOM_CRITERIA.requireQuarterLine,
+    maxAbsHdpLine:
+      typeof rawCriteria?.maxAbsHdpLine === 'number' ? rawCriteria.maxAbsHdpLine : DEFAULT_1XBET_RANDOM_CRITERIA.maxAbsHdpLine,
+    minHdpOdds: typeof rawCriteria?.minHdpOdds === 'number' ? rawCriteria.minHdpOdds : DEFAULT_1XBET_RANDOM_CRITERIA.minHdpOdds,
+    maxHdpOdds: typeof rawCriteria?.maxHdpOdds === 'number' ? rawCriteria.maxHdpOdds : DEFAULT_1XBET_RANDOM_CRITERIA.maxHdpOdds,
+    minEdgePercent:
+      typeof rawCriteria?.minEdgePercent === 'number' ? rawCriteria.minEdgePercent : DEFAULT_1XBET_RANDOM_CRITERIA.minEdgePercent,
+    requireConsensus98: rawCriteria?.requireConsensus98 ?? DEFAULT_1XBET_RANDOM_CRITERIA.requireConsensus98,
+  };
+
+  const evaluations = realQualifiedPool.map((m) => evaluateMatchAgainst1xBetCriteria(m, criteria));
+  const passedAll = evaluations.filter((e) => e.passed);
+  const excludedDetails = evaluations
+    .filter((e) => !e.passed)
+    .map((e) => ({
+      matchId: e.match.id,
+      matchLabel: `${e.match.homeTeam} vs ${e.match.awayTeam}`,
+      hdpLine: e.hdp.handicapLine,
+      hdpOdds: e.hdp.handicapOdds,
+      edgePercent: e.hdp.hdpEdgePercent,
+      reasonThai: e.reasonThai,
+    }));
+
+  // Prefer rotating away from current excludeId when multiple matches qualify
+  const rotatedPool = passedAll.filter((e) => !excludeId || e.match.id !== excludeId);
+  const poolToPickFrom = rotatedPool.length > 0 ? rotatedPool : passedAll;
+
+  let selectedEval: (typeof evaluations)[number];
+  let fallbackUsed = false;
+
+  if (poolToPickFrom.length > 0) {
+    const sorted = [...poolToPickFrom].sort(
+      (a, b) => b.hdp.hdpEdgePercent - a.hdp.hdpEdgePercent || b.match.consensusAgreementRate - a.match.consensusAgreementRate
+    );
+    selectedEval = sorted[Math.floor(Math.random() * sorted.length)];
+  } else {
+    fallbackUsed = true;
+    const consensusBackup = evaluations.filter((e) => e.match.consensusAgreementRate >= 98.0 && e.match.convergenceRate >= 98.0);
+    const backupPool = consensusBackup.length > 0 ? consensusBackup : evaluations;
+    const rotatedBackup = backupPool.filter((e) => !excludeId || e.match.id !== excludeId);
+    const finalPool = rotatedBackup.length > 0 ? rotatedBackup : backupPool;
+    selectedEval = finalPool[Math.floor(Math.random() * finalPool.length)];
+  }
+
+  return {
+    selected: selectedEval.match,
+    selectedHdp: selectedEval.hdp,
+    report: {
+      criteriaUsed: criteria,
+      totalEvaluated: evaluations.length,
+      qualifiedCount: passedAll.length,
+      qualifiedIds: passedAll.map((e) => e.match.id),
+      excludedDetails,
+      fallbackUsed,
+    },
+  };
+}
+
+function getRandomBestMatch(excludeId?: string): MatchFixture {
+  return getRandomBestMatchWithReport(excludeId).selected;
 }
 
 // Archive finished matches up to the current active date
@@ -2565,17 +2658,23 @@ app.get('/api/football/audits', (_req, res) => {
   });
 });
 
-// 1.1 Randomly pick the best match with factor convergence >98%
+// 1.1 Randomly pick the best match with factor convergence >98% AND 1xBet market criteria
 app.post('/api/football/random-best-pick', (req, res) => {
-  const { excludeId } = req.body || {};
-  const selected = getRandomBestMatch(excludeId || currentCorrectScoreTip.selectedMatch.id);
+  const { excludeId, oneXBetCriteria } = req.body || {};
+  const result = getRandomBestMatchWithReport(excludeId || currentCorrectScoreTip.selectedMatch.id, oneXBetCriteria);
+  const { selected, selectedHdp, report } = result;
   currentCorrectScoreTip = buildCorrectScoreTip(selected);
   currentAccumulator.correctScoreTip = currentCorrectScoreTip;
+
+  const summaryStatus = report.fallbackUsed
+    ? `ไม่มีคู่ที่ตรงทุกเงื่อนไข 1xBet จึงเลือกคู่สำรองที่ผ่าน Consensus >98% สูงสุดแทน`
+    : `ผ่านเกณฑ์ 1xBet HDP + Consensus >98% (${report.qualifiedCount}/${report.totalEvaluated} คู่)`;
 
   res.json({
     success: true,
     tip: currentCorrectScoreTip,
-    message: `สุ่มเลือกคู่โพยเด็ดซูเปอร์โกลเด้นสลิปสำเร็จ: [${selected.league}] ${selected.homeTeam} พบ ${selected.awayTeam} (ฉันทามติ 10 สถาบันตรงกัน ${selected.consensusAgreementRate}% > 98.0%)`,
+    oneXBetFilterReport: report,
+    message: `สุ่มเลือกคู่ 1xBet: ${selected.homeTeam} พบ ${selected.awayTeam} | ${selectedHdp.handicapLine} @${selectedHdp.handicapOdds.toFixed(2)} (Edge +${selectedHdp.hdpEdgePercent}% · ฉันทามติ ${selected.consensusAgreementRate}%) — ${summaryStatus}`,
   });
 });
 

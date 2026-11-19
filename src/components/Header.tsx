@@ -49,7 +49,7 @@ export const Header: React.FC<HeaderProps> = ({
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            🛡️ โพยเด็ด X2 โกลเด้นสลิป (90%)
+            ⚖️ โพยเด็ด 1xBet HDP (98%+)
           </button>
 
           <button
@@ -94,11 +94,11 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={onRandomPick}
               disabled={isRandomPicking}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-black text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg transition-all cursor-pointer disabled:opacity-50 shadow-md shadow-amber-500/20"
-              title="สุ่มคู่ซูเปอร์โกลเด้นสลิปที่ผ่านเกณฑ์ 100 สถาบันสถิติสากลเกิน 98.0%"
+              title="สุ่มคู่ซูเปอร์โกลเด้นสลิปที่ผ่านเกณฑ์ 1xBet HDP + ฉันทามติ 100 สถาบันเกิน 98.0%"
             >
               <Dices className={`w-3.5 h-3.5 text-slate-950 ${isRandomPicking ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">สุ่มคู่ซูเปอร์โกลเด้น (100 สถาบัน &gt;98%)</span>
-              <span className="sm:hidden">สุ่มคู่ (&gt;98%)</span>
+              <span className="hidden sm:inline">สุ่มคู่ 1xBet (&gt;98%)</span>
+              <span className="sm:hidden">สุ่ม 1xBet</span>
             </button>
           )}
 
