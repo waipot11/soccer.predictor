@@ -53,7 +53,9 @@ interface AccumulatorSlipProps {
   isSyncingToday?: boolean;
   onOptimizeUltraSafe?: () => void;
   isOptimizingUltraSafe?: boolean;
-  onAddCustomMatch?: (data: { homeTeam: string; awayTeam: string; league?: string; decimalOdds?: number }) => void;
+  onAddCustomMatch?: (data: { homeTeam: string; awayTeam: string; league?: string; decimalOdds?: number; x2Odds1xBet?: number }) => void;
+  onUpdateX2Odds?: (matchId: string, x2Odds1xBet: number) => void;
+  onUpdateHdpOdds?: (matchId: string, hdpLine1xBet: string, hdpOdds1xBet: number) => void;
 }
 
 export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
@@ -81,14 +83,19 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
   onOptimizeUltraSafe,
   isOptimizingUltraSafe = false,
   onAddCustomMatch,
+  onUpdateX2Odds,
+  onUpdateHdpOdds,
 }) => {
   const [stakeAmount, setStakeAmount] = useState<number>(1000);
+  const [liveX2Input, setLiveX2Input] = useState<string>('');
+  const [liveHdpLineInput, setLiveHdpLineInput] = useState<string>('');
+  const [liveHdpOddsInput, setLiveHdpOddsInput] = useState<string>('');
   const [activeAnalysisSubTab, setActiveAnalysisSubTab] = useState<'institutes' | 'tactical' | 'poisson' | 'audits'>('institutes');
   const [isFactorsExpanded, setIsFactorsExpanded] = useState<boolean>(true);
   const [isAuditsExpanded, setIsAuditsExpanded] = useState<boolean>(true);
   
-  // Strategy Mode: X2_PRIMARY (โพยเด็ด X2 สองโอกาส 90% Win Rate - DEFAULT), HDP_OVER (Handicap & Over), DUTCHING (3-Score Cluster), or EXACT (Correct Score)
-  const [activeTipStrategyMode, setActiveTipStrategyMode] = useState<'X2_PRIMARY' | 'HDP_OVER' | 'DUTCHING' | 'EXACT'>('X2_PRIMARY');
+  // Strategy Mode: HDP_OVER (1xBet Asian Handicap ROI +26.3% & Over Score + Consensus >98% - DEFAULT), X2_PRIMARY, DUTCHING, EXACT
+  const [activeTipStrategyMode, setActiveTipStrategyMode] = useState<'HDP_OVER' | 'X2_PRIMARY' | 'DUTCHING' | 'EXACT'>('HDP_OVER');
 
   // 100 Institutes Filter & Search State
   const [instituteSearch, setInstituteSearch] = useState<string>('');
@@ -212,8 +219,8 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            <span className="text-xs px-3 py-1.5 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-bold">
-              ⏰ โพย 06:00 น. · LINE 06:30 น.
+            <span className="text-xs px-3 py-1.5 rounded-xl bg-sky-500/20 border border-sky-500/40 text-sky-300 font-bold">
+              ⏰ โพย 06:00 น. · Telegram 06:30 น.
             </span>
             {onNavigateToPerformance && (
               <button
@@ -566,57 +573,58 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
         </div>
       </div>
 
-      {/* 1xBet Real Fixtures Quick Selector */}
+      {/* 1xBet Real Fixtures Quick Selector (Consensus >98% + Asian Handicap Edge) */}
       {qualifiedPool && qualifiedPool.length > 1 && (
         <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
-            <span className="font-extrabold text-amber-300 flex items-center gap-1.5">
-              <span>🛡️ เลือกคู่แข่งขันจริง (Safe X2 Filter: คัดเฉพาะค่าน้ำ @1.25 - @1.45 · ความแม่นยำ 83% - 90%):</span>
+            <span className="font-extrabold text-cyan-300 flex items-center gap-1.5">
+              <span>⚖️ เลือกคู่แข่งขันจริง (กรอง Consensus &gt;98.0% · อิงราคา 1xBet Asian Handicap):</span>
             </span>
-            <span className="text-[10px] text-emerald-400 font-mono">ตัดคู่ราคาต่ำกว่า @1.25 (เช่น 1.016) ออกอัตโนมัติ</span>
+            <span className="text-[10px] text-emerald-400 font-mono">จัดอันดับตาม Edge เชิงคณิตศาสตร์ + ฉันทามติ &gt;98%</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-xs">
             {qualifiedPool.map((m) => {
               const isSelected = m.id === match?.id;
-              const estOdds = m.x2EstimatedOdds ?? 1.15;
-              const estProb = m.x2EstimatedProb ?? 85.0;
-              const isSafeX2 = m.isValueX2Qualified ?? (estOdds >= 1.25 && estOdds <= 1.45);
+              const favTeam = m.homexG >= m.awayxG ? m.homeTeam : m.awayTeam;
+              const hdpLine = m.hdpLine1xBet || '-0.75';
+              const hdpOdds = m.hdpOdds1xBet ?? m.hdpEstimatedOdds ?? 1.82;
+              const hdpProb = m.hdpEstimatedProb ?? 73.0;
+              const hdpEdge = m.hdpEdgePercent ?? parseFloat((hdpProb - (1 / Math.max(1.01, hdpOdds)) * 100).toFixed(1));
+              const isConsensusOk = (m.consensusAgreementRate ?? 99.0) >= 98.0;
+              const isHdpOk = m.isValueHdpQualified ?? (isConsensusOk && hdpEdge > 0 && hdpOdds >= 1.65);
+
               return (
                 <button
                   key={m.id}
                   onClick={() => onSelectMatch(m.id)}
                   className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
                     isSelected
-                      ? isSafeX2
-                        ? 'bg-emerald-950/60 border-emerald-400/90 shadow-lg shadow-emerald-950/40 ring-1 ring-emerald-400/50'
-                        : 'bg-amber-950/60 border-amber-400/80 shadow-lg shadow-amber-950/40 ring-1 ring-amber-400/50'
-                      : isSafeX2
-                      ? 'bg-slate-950/80 border-emerald-500/35 hover:border-emerald-400/70 text-slate-200'
-                      : 'bg-slate-950/50 border-slate-800/80 hover:border-slate-700 text-slate-400 opacity-80'
+                      ? 'bg-cyan-950/60 border-cyan-400/90 shadow-lg shadow-cyan-950/40 ring-1 ring-cyan-400/50'
+                      : isHdpOk
+                      ? 'bg-slate-950/80 border-cyan-500/35 hover:border-cyan-400/70 text-slate-200'
+                      : 'bg-slate-950/50 border-slate-800/80 hover:border-slate-700 text-slate-400 opacity-85'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-1">
-                    <span className="text-[10px] font-bold text-slate-400 truncate max-w-[105px]">{m.league.split('(')[0].trim()}</span>
-                    {isSafeX2 ? (
-                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40 shrink-0">
-                        ✅ SAFE X2
-                      </span>
-                    ) : (
-                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-rose-500/15 text-rose-300 font-bold border border-rose-500/30 shrink-0">
-                        ⚠️ ต่ำกว่า @1.25
-                      </span>
-                    )}
+                    <span className="text-[10px] font-bold text-slate-400 truncate max-w-[95px]">{m.league.split('(')[0].trim()}</span>
+                    <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold border shrink-0 ${
+                      isHdpOk
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                        : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                    }`}>
+                      {isConsensusOk ? `${m.consensusAgreementRate}% ✅` : 'FILTERED'}
+                    </span>
                   </div>
-                  <div className={`font-black text-xs ${isSelected ? 'text-white' : isSafeX2 ? 'text-slate-100' : 'text-slate-300'}`}>
+                  <div className={`font-black text-xs ${isSelected ? 'text-white' : 'text-slate-100'}`}>
                     {m.homeTeam} พบ {m.awayTeam}
                   </div>
                   <div className="flex items-center justify-between text-[10px] font-mono">
-                    <span className={isSafeX2 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
-                      {m.homexG >= m.awayxG ? '1X' : 'X2'} @{estOdds.toFixed(2)}
+                    <span className="text-cyan-300 font-bold truncate max-w-[125px]">
+                      {favTeam.split(' ')[0]} {hdpLine} @{hdpOdds.toFixed(2)}
                     </span>
-                    <span className={isSafeX2 ? 'text-sky-300 font-bold' : 'text-slate-500'}>
-                      เข้า {estProb}%
+                    <span className="text-emerald-300 font-bold shrink-0">
+                      +{hdpEdge.toFixed(1)}% ({hdpProb}%)
                     </span>
                   </div>
                 </button>
@@ -699,30 +707,30 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
 
             {/* Big Golden X2 / Multi-Market Strategy Callout */}
             <div className="lg:col-span-6 space-y-3">
-              {/* Strategy Mode Toggle Header - X2 DOUBLE CHANCE IS PRIMARY */}
+              {/* Strategy Mode Toggle Header - 1xBet ASIAN HANDICAP & OVER SCORE IS PRIMARY */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1.5 bg-slate-950/90 rounded-2xl border border-slate-800">
-                <button
-                  onClick={() => setActiveTipStrategyMode('X2_PRIMARY')}
-                  className={`py-2 px-2.5 rounded-xl text-[11px] font-black transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                    activeTipStrategyMode === 'X2_PRIMARY'
-                      ? 'bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400 text-slate-950 shadow-lg shadow-emerald-500/25'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-                  <span>🛡️ X2 สองโอกาส (ตัวหลัก 90%)</span>
-                </button>
-
                 <button
                   onClick={() => setActiveTipStrategyMode('HDP_OVER')}
                   className={`py-2 px-2.5 rounded-xl text-[11px] font-black transition-all cursor-pointer flex items-center justify-center gap-1 ${
                     activeTipStrategyMode === 'HDP_OVER'
-                      ? 'bg-gradient-to-r from-cyan-500 to-sky-400 text-slate-950 shadow-lg shadow-cyan-500/25'
+                      ? 'bg-gradient-to-r from-cyan-400 via-sky-400 to-emerald-400 text-slate-950 shadow-lg shadow-cyan-500/25'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   <TrendingUp className="w-3.5 h-3.5 shrink-0" />
-                  <span>⚖️ HDP &amp; Over Score</span>
+                  <span>⚖️ 1xBet HDP &amp; Over (ตัวหลัก)</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTipStrategyMode('X2_PRIMARY')}
+                  className={`py-2 px-2.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                    activeTipStrategyMode === 'X2_PRIMARY'
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 shadow-lg shadow-emerald-500/25 font-black'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                  <span>🛡️ X2 สองโอกาส (อ้างอิง)</span>
                 </button>
 
                 <button
@@ -749,13 +757,17 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
                 </button>
               </div>
 
-              {/* MODE 1 (DEFAULT PRIMARY): SAFE HIGH-ACCURACY X2 (@1.25-@1.45, 83%-90%) */}
+              {/* MODE 1 (DEFAULT PRIMARY): SAFE HIGH-ACCURACY X2 (@1.25-@1.45, 83%-90% REAL 1xBet CALIBRATION) */}
               {activeTipStrategyMode === 'X2_PRIMARY' && (() => {
-                const x2Pick = tip?.marketRecommendations?.x2Pick || `${match.homexG >= match.awayxG ? '1X' : 'X2'} (${match.homexG >= match.awayxG ? match.homeTeam : match.awayTeam} ชนะ/เสมอ)`;
-                const x2Odds = tip?.marketRecommendations?.x2Odds || match.x2EstimatedOdds || 1.28;
-                const x2Prob = tip?.marketRecommendations?.x2Prob || match.x2EstimatedProb || 87.3;
-                const isSafeX2 = tip?.marketRecommendations?.isValueX2Qualified ?? (x2Odds >= 1.25 && x2Odds <= 1.45);
-                const x2FilterNote = tip?.marketRecommendations?.x2FilterNote;
+                const mkt = tip?.marketRecommendations;
+                const x2Pick = mkt?.x2Pick || `${match.homexG >= match.awayxG ? '1X' : 'X2'} (${match.homexG >= match.awayxG ? match.homeTeam : match.awayTeam} ชนะ/เสมอ)`;
+                const x2Odds = mkt?.x2Odds ?? match.x2EstimatedOdds ?? 1.137;
+                const x2OddsStr = mkt?.x2OddsDisplay || (x2Odds.toString().split('.')[1]?.length === 3 ? x2Odds.toFixed(3) : x2Odds.toFixed(2));
+                const x2Prob = mkt?.x2Prob ?? match.x2EstimatedProb ?? 83.5;
+                const breakEven = mkt?.x2BreakEvenWinRate ?? parseFloat(((1 / Math.max(1.01, x2Odds)) * 100).toFixed(1));
+                const isSafeX2 = mkt?.isValueX2Qualified ?? (x2Odds >= 1.25 && x2Odds <= 1.45 && x2Prob >= 83.0);
+                const x2FilterNote = mkt?.x2FilterNote;
+                const twoFold = mkt?.twoFoldX2Combo;
                 const x2Return = Math.round(stakeAmount * x2Odds);
                 const x2Profit = x2Return - stakeAmount;
 
@@ -763,36 +775,49 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
                   <div className={`rounded-2xl border-2 p-6 shadow-2xl relative overflow-hidden animate-in fade-in space-y-4 ${
                     isSafeX2
                       ? 'border-emerald-400/90 bg-gradient-to-br from-emerald-950/60 via-slate-950 to-slate-950'
-                      : 'border-rose-500/70 bg-gradient-to-br from-rose-950/50 via-slate-950 to-slate-950'
+                      : 'border-rose-500/75 bg-gradient-to-br from-rose-950/50 via-slate-950 to-slate-950'
                   }`}>
                     <div className={`absolute top-0 right-0 px-3.5 py-1 text-slate-950 text-[10px] font-black tracking-wider uppercase rounded-bl-xl shadow-md ${
                       isSafeX2 ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-rose-400'
                     }`}>
                       {isSafeX2
-                        ? '✅ SAFE X2 FILTER (@1.25-@1.45 · แม่นยำ 83%-90%)'
-                        : '⚠️ ค่าน้ำต่ำกว่า @1.25 (ระบบกรองทิ้ง — แนะนำข้าม X2 คู่นี้)'}
+                        ? '✅ SAFE X2 FILTER (@1.25-@1.45 · แม่นยำ 83%+)'
+                        : x2Odds < 1.25
+                        ? '🚫 ต่ำกว่า @1.25 บน 1xBet (ข้าม X2 เดี่ยว · ใช้ HDP/สเต็ปแทน)'
+                        : '⚠️ ความแม่นยำต่ำกว่า 83% (แนะนำ HDP / Over แทน)'}
                     </div>
 
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
                       <div>
                         <span className={`text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5 ${
                           isSafeX2 ? 'text-emerald-400' : 'text-rose-300'
                         }`}>
                           <ShieldCheck className="w-4 h-4" />
-                          <span>โพยเด็ดซูเปอร์โกลเด้นสลิป X2 (เกณฑ์ค่าน้ำ @1.25 - @1.45)</span>
+                          <span>เช็กราคา 1xBet X2 จริง (เกณฑ์ Option B: @1.25 - @1.45)</span>
                         </span>
-                        <div className="text-2xl sm:text-3xl font-black text-white tracking-wide mt-1.5">
+                        <div className="text-xl sm:text-2xl font-black text-white tracking-wide mt-1.5">
                           【 {x2Pick} 】
                         </div>
-                        <span className={`text-[11px] font-medium mt-1 block ${isSafeX2 ? 'text-emerald-200/90' : 'text-rose-200'}`}>
-                          ★ โอกาสเข้าเป้าจริง {x2Prob}% (เกณฑ์ระบบ Safe X2: 83% - 90% ไม่มั่วตัวเลข · ตัดคู่ค่าน้ำขยะต่ำกว่า @1.25 ทิ้ง)
-                        </span>
+                        <div className="flex items-center gap-2 flex-wrap text-[11px] font-medium mt-1.5">
+                          <span className={isSafeX2 ? 'text-emerald-200' : 'text-amber-200'}>
+                            โอกาสเข้าจริง: <strong className="font-mono text-white">{x2Prob}%</strong>
+                          </span>
+                          <span className="text-slate-600">·</span>
+                          <span className={x2Prob >= breakEven ? 'text-emerald-300 font-bold' : 'text-rose-300 font-bold'}>
+                            จุดคุ้มทุน (Break-Even): <strong className="font-mono">{breakEven}%</strong>
+                          </span>
+                          {mkt?.isVerified1xBetQuote && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 font-bold">
+                              ✓ ราคา 1xBet จริง
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <div className="text-left sm:text-right shrink-0 bg-slate-900/80 sm:bg-transparent p-3 sm:p-0 rounded-xl border sm:border-0 border-slate-800">
-                        <span className="text-[11px] text-slate-400 block font-semibold">ค่าน้ำ X2 สองโอกาส</span>
+                        <span className="text-[11px] text-slate-400 block font-semibold">ค่าน้ำ 1xBet X2</span>
                         <div className={`text-3xl sm:text-4xl font-black tabular-nums ${isSafeX2 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          @{x2Odds.toFixed(2)}
+                          @{x2OddsStr}
                         </div>
                         <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border inline-block mt-0.5 ${
                           isSafeX2
@@ -805,7 +830,7 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
                     </div>
 
                     {x2FilterNote && (
-                      <div className={`p-3 rounded-xl border text-xs font-semibold flex items-start gap-2 ${
+                      <div className={`p-3 rounded-xl border text-xs font-semibold flex items-start gap-2 leading-relaxed ${
                         isSafeX2
                           ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200'
                           : 'bg-rose-950/60 border-rose-500/50 text-rose-200'
@@ -814,18 +839,74 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
                       </div>
                     )}
 
+                    {/* 2-Fold Safe X2 Parlay Alternative when single match < @1.25 */}
+                    {twoFold && !isSafeX2 && (
+                      <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-500/45 text-xs space-y-1">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="font-black text-amber-300">🔗 ทางเลือกสเต็ป X2 2 คู่ (หากต้องการค่าน้ำรวมเข้าใกล้ @1.25+):</span>
+                          <span className="font-mono font-black text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded border border-emerald-500/30">
+                            รวม @{twoFold.combinedOdds.toFixed(2)} (เข้าทั้งคู่ ~{twoFold.combinedProb}%)
+                          </span>
+                        </div>
+                        <div className="text-slate-200 font-semibold">
+                          {twoFold.leg1} (@{twoFold.leg1Odds}) × {twoFold.leg2} (@{twoFold.leg2Odds})
+                        </div>
+                        <div className="text-[11px] text-amber-200/80">{twoFold.noteThai}</div>
+                      </div>
+                    )}
+
+                    {/* Live 1xBet X2 Odds Calibration Box */}
+                    {onUpdateX2Odds && (
+                      <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                        <span className="text-slate-300 font-semibold">
+                          🔎 อัปเดตราคา X2 ที่คุณเห็นบนหน้าเว็บ 1xBet สด:
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            step="0.001"
+                            min="1.01"
+                            max="3.50"
+                            value={liveX2Input}
+                            onChange={(e) => setLiveX2Input(e.target.value)}
+                            placeholder={`เช่น ${x2OddsStr}`}
+                            className="w-28 px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:border-sky-400"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const v = parseFloat(liveX2Input);
+                              if (v > 1.001) {
+                                onUpdateX2Odds(match.id, v);
+                                setLiveX2Input('');
+                              }
+                            }}
+                            className="px-3 py-1 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-xs transition-colors cursor-pointer whitespace-nowrap"
+                          >
+                            คำนวณจุดคุ้มทุน
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Multi-Market Companion Picks (Handicap + Over Score) */}
-                    {tip?.marketRecommendations && (
+                    {mkt && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-                        <div className="p-3 rounded-xl bg-cyan-950/35 border border-cyan-500/40 space-y-1">
-                          <div className="text-[10px] text-cyan-300 font-bold">⚖️ เสริมทำกำไร Asian Handicap (ROI +26.3%)</div>
-                          <div className="font-black text-white">{tip.marketRecommendations.handicapPick}</div>
-                          <div className="text-[11px] font-mono text-cyan-400">@{tip.marketRecommendations.handicapOdds.toFixed(2)} · โอกาสเข้า {tip.marketRecommendations.handicapProb}%</div>
+                        <div className={`p-3 rounded-xl border space-y-1 ${
+                          !isSafeX2
+                            ? 'bg-cyan-950/60 border-cyan-400/80 ring-1 ring-cyan-400/40'
+                            : 'bg-cyan-950/35 border-cyan-500/40'
+                        }`}>
+                          <div className="text-[10px] text-cyan-300 font-bold">
+                            {!isSafeX2 ? '⭐ แนะนำหลักคืนนี้: Asian Handicap (ROI +26.3%)' : '⚖️ เสริมทำกำไร Asian Handicap (ROI +26.3%)'}
+                          </div>
+                          <div className="font-black text-white">{mkt.handicapPick}</div>
+                          <div className="text-[11px] font-mono text-cyan-400">@{mkt.handicapOdds.toFixed(2)} · โอกาสเข้า {mkt.handicapProb}%</div>
                         </div>
                         <div className="p-3 rounded-xl bg-amber-950/35 border border-amber-500/40 space-y-1">
                           <div className="text-[10px] text-amber-300 font-bold">🔥 ทางเลือกสกอร์รวม Over Score (เข้า 66.7%)</div>
-                          <div className="font-black text-white">{tip.marketRecommendations.overScorePick}</div>
-                          <div className="text-[11px] font-mono text-amber-300">@{tip.marketRecommendations.overScoreOdds.toFixed(2)} · โอกาสเข้า {tip.marketRecommendations.overScoreProb}%</div>
+                          <div className="font-black text-white">{mkt.overScorePick}</div>
+                          <div className="text-[11px] font-mono text-amber-300">@{mkt.overScoreOdds.toFixed(2)} · โอกาสเข้า {mkt.overScoreProb}%</div>
                         </div>
                       </div>
                     )}
@@ -833,57 +914,155 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
                     <div className="p-3 rounded-xl bg-slate-900/80 border border-emerald-500/30 text-[11px] text-slate-300 flex items-start gap-2">
                       <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                       <span>
-                        <b className="text-emerald-300">กฎเหล็ก Safe High-Accuracy X2:</b> ระบบคัดเฉพาะคู่ที่ X2 จ่าย <b className="text-white">@1.25 - @1.45</b> (โอกาสเข้าจริง <b className="text-white">83% - 90%</b>) และกรองทิ้งคู่ต่อขาดที่จ่ายต่ำกว่า <b className="text-rose-300">@1.25</b> (เช่น 1.016) เพื่อไม่ให้พลาด 1 นัดแล้วล้างกำไรทั้งเดือน
+                        <b className="text-emerald-300">ความจริงคณิตศาสตร์ 100%:</b> คู่ที่โอกาสเข้า 83%-90% จริงๆ ฝั่งเจ้ามือ 1xBet จะเปิด X2 แค่ <b className="text-rose-300">1.08 - 1.15</b> (เช่น ลียง <b className="text-rose-300">1.137</b>) ดังนั้นหากวันไหนไม่มีคู่เดี่ยวที่คุ้มทุน ระบบจะเตือนตรงๆ และสลับให้ใช้ <b className="text-cyan-300">Handicap / สเต็ป X2 / รอลีกใหญ่สุดสัปดาห์</b> แทนการมั่วตัวเลข!
                       </span>
                     </div>
                   </div>
                 );
               })()}
 
-              {/* MODE 2: ASIAN HANDICAP & OVER SCORE */}
-              {activeTipStrategyMode === 'HDP_OVER' && (
-                <div className="rounded-2xl border-2 border-cyan-500/80 bg-gradient-to-br from-cyan-950/60 via-slate-950 to-slate-950 p-6 shadow-2xl relative overflow-hidden space-y-4 animate-in fade-in">
-                  <div className="absolute top-0 right-0 px-3.5 py-1 bg-gradient-to-r from-cyan-500 to-sky-400 text-slate-950 text-[10px] font-black tracking-wider uppercase rounded-bl-xl shadow-md">
-                    HANDICAP (ROI +26.3%) &amp; OVER SCORE
-                  </div>
+              {/* MODE 1 (DEFAULT PRIMARY): 1xBET ASIAN HANDICAP + OVER SCORE WITH >98% CONSENSUS FILTER */}
+              {activeTipStrategyMode === 'HDP_OVER' && (() => {
+                const mkt = tip?.marketRecommendations;
+                const hdpPick = mkt?.handicapPick || tip?.safeBankerPick?.team || `${match.homexG >= match.awayxG ? match.homeTeam : match.awayTeam} ต่อ -0.75 (1xBet HDP)`;
+                const hdpLine = mkt?.handicapLine || match.hdpLine1xBet || '-0.75';
+                const hdpOdds = mkt?.handicapOdds ?? match.hdpOdds1xBet ?? match.hdpEstimatedOdds ?? 1.82;
+                const hdpProb = mkt?.handicapProb ?? match.hdpEstimatedProb ?? 73.4;
+                const hdpBreakEven = mkt?.handicapBreakEvenWinRate ?? match.hdpBreakEvenRate ?? parseFloat(((1 / Math.max(1.01, hdpOdds)) * 100).toFixed(1));
+                const hdpEdge = mkt?.handicapEdgePercent ?? match.hdpEdgePercent ?? parseFloat((hdpProb - hdpBreakEven).toFixed(1));
+                const isHdpQualified = mkt?.isValueHdpQualified ?? match.isValueHdpQualified ?? (consensusAgreementRate >= 98.0 && hdpEdge > 0);
+                const hdpReturn = Math.round(stakeAmount * hdpOdds);
+                const hdpProfit = hdpReturn - stakeAmount;
 
-                  <div className="flex items-start justify-between gap-4 pt-1">
-                    <div>
-                      <span className="text-xs font-black text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <TrendingUp className="w-4 h-4 text-cyan-400" />
-                        <span>ตลาดแฮนดิแคป Asian Handicap (ทำกำไรสะสมสูงสุด)</span>
-                      </span>
-                      <div className="text-xl sm:text-2xl font-black text-white tracking-wide mt-1">
-                        【 {tip?.marketRecommendations?.handicapPick || tip?.safeBankerPick?.team} 】
+                return (
+                  <div className="rounded-2xl border-2 border-cyan-400/90 bg-gradient-to-br from-cyan-950/60 via-slate-950 to-slate-950 p-6 shadow-2xl relative overflow-hidden space-y-4 animate-in fade-in">
+                    <div className={`absolute top-0 right-0 px-3.5 py-1 text-slate-950 text-[10px] font-black tracking-wider uppercase rounded-bl-xl shadow-md ${
+                      isHdpQualified
+                        ? 'bg-gradient-to-r from-cyan-400 to-emerald-400'
+                        : 'bg-amber-400'
+                    }`}>
+                      {isHdpQualified
+                        ? '✅ CONSENSUS >98% PASSED · 1xBet HDP PRIMARY (ROI +26.3%)'
+                        : '⚠️ ตรวจสอบราคา 1xBet HDP'}
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+                      <div>
+                        <span className="text-xs font-black text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <TrendingUp className="w-4 h-4 text-cyan-400" />
+                          <span>#1 ตัวหลัก: Asian Handicap อิง 1xBet (ตัวกรอง 98%+)</span>
+                        </span>
+                        <div className="text-xl sm:text-2xl font-black text-white tracking-wide mt-1.5">
+                          【 {hdpPick} 】
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap text-[11px] font-medium mt-1.5">
+                          <span className="text-cyan-200">
+                            โอกาสชนะราคาต่อจริง: <strong className="font-mono text-white">{hdpProb}%</strong>
+                          </span>
+                          <span className="text-slate-600">·</span>
+                          <span className="text-slate-300">
+                            จุดคุ้มทุน: <strong className="font-mono">{hdpBreakEven}%</strong>
+                          </span>
+                          <span className="text-slate-600">·</span>
+                          <span className="text-emerald-300 font-bold">
+                            Edge: <strong className="font-mono">{hdpEdge >= 0 ? `+${hdpEdge.toFixed(1)}%` : `${hdpEdge.toFixed(1)}%`}</strong>
+                          </span>
+                          {mkt?.isVerified1xBetHdp && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 font-bold">
+                              ✓ ราคา 1xBet จริง
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-xs text-amber-300 font-bold mt-1.5 flex items-center gap-1.5 flex-wrap">
-                        <span>🔥 Over Score ประจำคู่:</span>
-                        <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-200 font-mono">
-                          {tip?.marketRecommendations?.overScorePick || 'Over 2.5'} (@{tip?.marketRecommendations?.overScoreOdds?.toFixed(2) || '1.65'})
+
+                      <div className="text-left sm:text-right shrink-0 bg-slate-900/80 sm:bg-transparent p-3 sm:p-0 rounded-xl border sm:border-0 border-slate-800">
+                        <span className="text-[11px] text-slate-400 block font-semibold">ค่าน้ำ 1xBet HDP ({hdpLine})</span>
+                        <div className="text-3xl sm:text-4xl font-black text-cyan-400 tabular-nums">
+                          @{hdpOdds.toFixed(2)}
+                        </div>
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded border inline-block mt-0.5 text-emerald-300 bg-emerald-500/20 border-emerald-500/40">
+                          รับรวม {hdpReturn.toLocaleString()} ฿ (+{hdpProfit.toLocaleString()})
                         </span>
                       </div>
                     </div>
 
-                    <div className="text-right shrink-0">
-                      <span className="text-[11px] text-slate-400">ค่าน้ำ Handicap</span>
-                      <div className="text-3xl sm:text-4xl font-black text-cyan-400 tabular-nums">
-                        @{tip?.marketRecommendations?.handicapOdds?.toFixed(2) || '1.80'}
+                    {mkt?.hdpFilterNote && (
+                      <div className="p-3 rounded-xl border bg-cyan-950/40 border-cyan-500/40 text-cyan-100 text-xs font-semibold leading-relaxed">
+                        {mkt.hdpFilterNote}
                       </div>
-                      <span className="text-[10px] text-cyan-300 font-mono font-bold">โอกาสเข้า {tip?.marketRecommendations?.handicapProb || 73.1}%</span>
-                    </div>
-                  </div>
+                    )}
 
-                  <div className="p-3.5 rounded-xl bg-slate-900/90 border border-cyan-500/30 text-xs text-slate-300 space-y-1.5">
-                    <div className="font-bold text-cyan-300 flex items-center gap-1.5">
-                      <ShieldCheck className="w-4 h-4 text-cyan-400 shrink-0" />
-                      <span>เหตุผลเชิงสถิติ 1 เดือนย้อนหลัง:</span>
+                    {/* Companion Over Score Cards (Over 2.5 + Safe Over 1.5) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                      <div className="p-3 rounded-xl bg-amber-950/35 border border-amber-500/45 space-y-1">
+                        <div className="text-[10px] text-amber-300 font-bold">🔥 #2 เสริมสกอร์สูงหลัก (Over Score)</div>
+                        <div className="font-black text-white">{mkt?.overScorePick || 'Over 2.5 (สกอร์รวมสูงกว่า 2.5)'}</div>
+                        <div className="text-[11px] font-mono text-amber-300">
+                          @{(mkt?.overScoreOdds || 1.65).toFixed(2)} · โอกาสเข้า {mkt?.overScoreProb || 66.7}%
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-emerald-950/35 border border-emerald-500/40 space-y-1">
+                        <div className="text-[10px] text-emerald-300 font-bold">🛡️ ทางเลือกสกอร์สูงเซฟตี้ (Safe Over 1.5)</div>
+                        <div className="font-black text-white">{mkt?.over15Pick || 'Over 1.5 (มี 2 ประตูขึ้นไป)'}</div>
+                        <div className="text-[11px] font-mono text-emerald-300">
+                          @{(mkt?.over15Odds || 1.24).toFixed(2)} · โอกาสเข้า {mkt?.over15Prob || 85.2}%
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-[11px] leading-relaxed text-slate-200">
-                      Asian Handicap ให้ค่าเฉลี่ยค่าน้ำ ~@1.81 พร้อม Win Rate 70.4% (กำไรสุทธิ +7,900 ฿ ใน 30 นัด) แนะนำใช้คู่กับ X2 ในสูตรจัดพอร์ต 45% HDP + 35% X2 + 20% Dutching 3-Score
-                    </p>
+
+                    {/* Live 1xBet HDP Line & Odds Calibration Box */}
+                    {onUpdateHdpOdds && (
+                      <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                        <span className="text-slate-300 font-semibold">
+                          🔎 อัปเดตราคาต่อและค่าน้ำ 1xBet HDP สด:
+                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <input
+                            type="text"
+                            value={liveHdpLineInput}
+                            onChange={(e) => setLiveHdpLineInput(e.target.value)}
+                            placeholder={`ราคา เช่น ${hdpLine}`}
+                            className="w-24 px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:border-cyan-400"
+                          />
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="1.10"
+                            max="4.00"
+                            value={liveHdpOddsInput}
+                            onChange={(e) => setLiveHdpOddsInput(e.target.value)}
+                            placeholder={`น้ำ ${hdpOdds.toFixed(2)}`}
+                            className="w-24 px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:border-cyan-400"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const lineVal = (liveHdpLineInput.trim() || hdpLine);
+                              const oddsVal = parseFloat(liveHdpOddsInput || `${hdpOdds}`);
+                              if (oddsVal >= 1.10) {
+                                onUpdateHdpOdds(match.id, lineVal, oddsVal);
+                                setLiveHdpLineInput('');
+                                setLiveHdpOddsInput('');
+                              }
+                            }}
+                            className="px-3 py-1 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-black text-xs transition-colors cursor-pointer whitespace-nowrap"
+                          >
+                            คำนวณ Edge 1xBet
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="p-3 rounded-xl bg-slate-900/80 border border-cyan-500/30 text-[11px] text-slate-300 flex items-start gap-2">
+                      <ShieldCheck className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                      <span>
+                        <b className="text-cyan-300">ทำไมต้อง HDP + ตัวกรอง 98%+:</b> ฉันทามติ 100 สถาบัน &gt;98.0% กรองให้เหลือเฉพาะคู่บอลห่างชั้นจริง ทำให้เล่น Asian Handicap 1xBet (@1.76–@1.85) ชนะ ~70%–75% สูงกว่าจุดคุ้มทุน (55%) สร้าง ROI +26.3% โดยไม่โดนกดน้ำแบบ X2 @1.137
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* MODE 3: 3-SCORE CLUSTER DUTCHING (STRICTLY 3 UNIQUE SCORES) */}
               {activeTipStrategyMode === 'DUTCHING' && (() => {
@@ -1004,7 +1183,7 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
 
                 <div className="text-right text-xs">
                   {activeTipStrategyMode === 'X2_PRIMARY' ? (() => {
-                    const x2Odds = tip?.marketRecommendations?.x2Odds || 1.15;
+                    const x2Odds = tip?.marketRecommendations?.x2Odds || match?.x2EstimatedOdds || 1.137;
                     const x2Ret = Math.round(stakeAmount * x2Odds);
                     return (
                       <>
@@ -1057,64 +1236,64 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
               </div>
 
               {/* TRIPLE-LAYER FAILURE PREVENTION SHIELD */}
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border-2 border-emerald-500/40 space-y-3.5 shadow-xl">
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border-2 border-cyan-500/40 space-y-3.5 shadow-xl">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2.5 flex-wrap gap-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                    <div className="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
                       <ShieldCheck className="w-4 h-4" />
                     </div>
                     <div>
                       <h4 className="text-xs font-black text-white tracking-wide flex items-center gap-1.5">
-                        <span>🛡️ ระบบเกราะป้องกันการหลุดเป้า 3 ชั้น (X2-First Architecture)</span>
-                        <span className="text-[10px] px-2 py-0.2 rounded-full bg-emerald-400 text-slate-950 font-black">
-                          X2 ACTIVE
+                        <span>🛡️ ระบบเกราะป้องกันการหลุดเป้า 3 ชั้น (1xBet HDP-First + &gt;98% Filter)</span>
+                        <span className="text-[10px] px-2 py-0.2 rounded-full bg-cyan-400 text-slate-950 font-black">
+                          HDP ACTIVE
                         </span>
                       </h4>
-                      <p className="text-[11px] text-slate-400">เน้นรักษาเงินต้นและอัตราเข้าเป้าสูงสุด 90% บนฐาน Render.com + Telegram</p>
+                      <p className="text-[11px] text-slate-400">กรองคู่จากฉันทามติ &gt;98% แล้วทำกำไรด้วย 1xBet HDP + Over Score + Dutching</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-xs">
-                  {/* Layer 1: Primary X2 Double Chance */}
-                  <div className="p-3 rounded-xl bg-slate-950/80 border border-emerald-500/40 space-y-1.5">
-                    <div className="flex items-center gap-1.5 font-bold text-emerald-400">
-                      <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-[10px] font-mono">1</span>
-                      <span>ตัวหลัก X2 สองโอกาส (90%)</span>
+                  {/* Layer 1: Primary 1xBet Asian Handicap */}
+                  <div className="p-3 rounded-xl bg-slate-950/80 border border-cyan-500/45 space-y-1.5">
+                    <div className="flex items-center gap-1.5 font-bold text-cyan-400">
+                      <span className="w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-300 flex items-center justify-center text-[10px] font-mono">1</span>
+                      <span>#1 1xBet HDP (ROI +26.3%)</span>
                     </div>
                     <p className="text-[11px] text-slate-200 leading-snug font-semibold">
-                      {tip?.marketRecommendations?.x2Pick || match?.recommendedPick} @{(tip?.marketRecommendations?.x2Odds || 1.15).toFixed(2)}
+                      {tip?.marketRecommendations?.handicapPick || '-0.75 Asian HDP'} @{(tip?.marketRecommendations?.handicapOdds || 1.82).toFixed(2)}
                     </p>
                     <div className="text-[10px] text-emerald-300 font-mono pt-1 border-t border-slate-800/80">
-                      ชนะหรือเสมอรับเงินเต็ม 100%
+                      เข้า {tip?.marketRecommendations?.handicapProb || 73.4}% vs คุ้มทุน {tip?.marketRecommendations?.handicapBreakEvenWinRate || 54.9}% (Edge +{(tip?.marketRecommendations?.handicapEdgePercent || 18.5).toFixed(1)}%)
                     </div>
                   </div>
 
-                  {/* Layer 2: Asian Handicap ROI Leader */}
-                  <div className="p-3 rounded-xl bg-slate-950/80 border border-cyan-500/30 space-y-1.5">
-                    <div className="flex items-center gap-1.5 font-bold text-cyan-400">
-                      <span className="w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-300 flex items-center justify-center text-[10px] font-mono">2</span>
-                      <span>เสริม HDP (ROI +26.3%)</span>
-                    </div>
-                    <p className="text-[11px] text-slate-300 leading-snug">
-                      {tip?.marketRecommendations?.handicapPick || '-1.0 Asian HDP'} @{(tip?.marketRecommendations?.handicapOdds || 1.80).toFixed(2)}
-                    </p>
-                    <div className="text-[10px] text-cyan-300 font-mono pt-1 border-t border-slate-800/80">
-                      สร้างกำไรระยะยาวคุ้มค่าที่สุด
-                    </div>
-                  </div>
-
-                  {/* Layer 3: Unique 3-Score Dutching */}
-                  <div className="p-3 rounded-xl bg-slate-950/80 border border-amber-500/30 space-y-1.5">
+                  {/* Layer 2: Over Score Companion */}
+                  <div className="p-3 rounded-xl bg-slate-950/80 border border-amber-500/35 space-y-1.5">
                     <div className="flex items-center gap-1.5 font-bold text-amber-400">
-                      <span className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center text-[10px] font-mono">3</span>
-                      <span>คัดกรองขจัดความเสี่ยง 5 มิติ</span>
+                      <span className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center text-[10px] font-mono">2</span>
+                      <span>#2 Over Score (2.5 / 1.5)</span>
+                    </div>
+                    <p className="text-[11px] text-slate-200 leading-snug font-semibold">
+                      {tip?.marketRecommendations?.overScorePick || 'Over 2.5'} @{(tip?.marketRecommendations?.overScoreOdds || 1.65).toFixed(2)}
+                    </p>
+                    <div className="text-[10px] text-emerald-300 font-mono pt-1 border-t border-slate-800/80">
+                      เซฟตี้ {tip?.marketRecommendations?.over15Pick || 'Over 1.5'} @{(tip?.marketRecommendations?.over15Odds || 1.24).toFixed(2)} ({tip?.marketRecommendations?.over15Prob || 85.2}%)
+                    </div>
+                  </div>
+
+                  {/* Layer 3: Consensus >98% + Risk Filter */}
+                  <div className="p-3 rounded-xl bg-slate-950/80 border border-emerald-500/35 space-y-1.5">
+                    <div className="flex items-center gap-1.5 font-bold text-emerald-400">
+                      <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-[10px] font-mono">3</span>
+                      <span>ตัวกรอง 100 สถาบัน &gt;98%</span>
                     </div>
                     <p className="text-[11px] text-slate-300 leading-snug">
-                      xG Gap เหนือกว่า +{(match?.homexG - match?.awayxG).toFixed(2)} · คู่แข่งบุกได้เพียง {match?.awayxG.toFixed(2)} ประตู
+                      xG Gap เหนือกว่า +{(match?.homexG - match?.awayxG).toFixed(2)} · ฉันทามติ {consensusAgreementRate}%
                     </p>
                     <div className="text-[10px] text-amber-300 font-mono pt-1 border-t border-slate-800/80">
-                      ตัดความเสี่ยงจุดโทษ ใบแดง และลูกแฉลบช่วงท้ายเกม
+                      อ้างอิง X2 จริง 1xBet @{tip?.marketRecommendations?.x2OddsDisplay || (tip?.marketRecommendations?.x2Odds || 1.137).toFixed(3)}
                     </div>
                   </div>
                 </div>

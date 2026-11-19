@@ -133,10 +133,19 @@ export interface MatchFixture {
     verificationNote: string;
   };
 
-  // Safe High-Accuracy X2 Filter (@1.25 - @1.45, 83%-90% real probability)
+  // Safe High-Accuracy X2 & 1xBet HDP Calibration
+  x2Odds1xBet?: number; // Exact live 1xBet X2/1X price if verified (e.g. 1.137)
   x2EstimatedOdds?: number;
   x2EstimatedProb?: number;
+  x2BreakEvenRate?: number;
   isValueX2Qualified?: boolean;
+  hdpLine1xBet?: string; // e.g. "-0.75", "-1.5"
+  hdpOdds1xBet?: number; // e.g. 1.82
+  hdpEstimatedOdds?: number;
+  hdpEstimatedProb?: number;
+  hdpBreakEvenRate?: number;
+  hdpEdgePercent?: number;
+  isValueHdpQualified?: boolean;
 
   // Deep Tactical & Positional Breakdown
   tacticalAnalysis?: TacticalAnalysis;
@@ -215,15 +224,36 @@ export interface CorrectScoreTip {
   marketRecommendations?: {
     x2Pick: string;
     x2Odds: number;
+    x2OddsDisplay?: string;
+    isVerified1xBetQuote?: boolean;
     x2Prob: number;
+    x2BreakEvenWinRate: number;
     isValueX2Qualified: boolean;
     x2FilterNote: string;
+    twoFoldX2Combo?: {
+      leg1: string;
+      leg1Odds: number;
+      leg2: string;
+      leg2Odds: number;
+      combinedOdds: number;
+      combinedProb: number;
+      noteThai: string;
+    };
     handicapPick: string;
     handicapOdds: number;
+    handicapLine?: string;
     handicapProb: number;
+    handicapBreakEvenWinRate?: number;
+    handicapEdgePercent?: number;
+    isVerified1xBetHdp?: boolean;
+    isValueHdpQualified?: boolean;
+    hdpFilterNote?: string;
     overScorePick: string;
     overScoreOdds: number;
     overScoreProb: number;
+    over15Pick?: string;
+    over15Odds?: number;
+    over15Prob?: number;
   };
 
   // 3-Day Miss Strategy Surgery & Dual-Mode System

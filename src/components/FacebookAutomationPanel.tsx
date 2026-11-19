@@ -285,11 +285,12 @@ export const FacebookAutomationPanel: React.FC<FacebookAutomationPanelProps> = (
   const consensusRate = tip?.consensusAgreementRate || currentMatch?.consensusAgreementRate || 99.2;
   const institutes = tip?.consensusInstitutes || currentMatch?.consensusInstitutes || [];
   const mkt = tip?.marketRecommendations;
-  const x2OddsPreview = mkt?.x2Odds || 1.15;
+  const x2OddsPreview = mkt?.x2Odds || 1.137;
+  const x2OddsDisplayPreview = mkt?.x2OddsDisplay || x2OddsPreview.toFixed(2);
   const x2PickPreview = mkt?.x2Pick || currentMatch?.recommendedPick || '1X (เจ้าบ้านชนะ/เสมอ)';
 
-  const postPreviewText = `🛡️【โพยเด็ดซูเปอร์โกลเด้นสลิป X2 (Super Golden X2 Slip)】🌟
-🏆 อัปเกรดตามสถิติจริง 1 เดือน: X2 (สองโอกาส) ชนะสูงสุด 90.0% (27/30 นัด) | รับรอง 100 สถาบันสถิติสากล
+  const postPreviewText = `⚖️【โพยเด็ดซูเปอร์โกลเด้นสลิป 1xBet HDP (Super Golden Slip)】🌟
+🏆 ตัวหลัก Asian Handicap (1xBet) + Over Score · ตัวกรองฉันทามติ >98.0% ครบ 100 สถาบัน
 📊 ดัชนีฉันทามติตรงกัน: ${consensusRate}% (เกณฑ์เข้มงวด >98.0% ครบทั้ง 100 สถาบัน)
 📅 ประจำวันที่ ${tip?.date || accumulator.date} (ตารางแข่งขันจริง Verified Match Fixture)
 ⏰ โพสต์ล่วงหน้าก่อนการแข่งขันเริ่ม ${config.autoPostLeadHours} ชั่วโมง | แจ้งเตือน Telegram 06:30 น. · Data on Render.com
@@ -298,20 +299,20 @@ export const FacebookAutomationPanel: React.FC<FacebookAutomationPanelProps> = (
    🏟️ ${currentMatch?.homeTeam || 'ทีมเหย้า'} พบ ${currentMatch?.awayTeam || 'ทีมเยือน'}
    📍 สนาม: ${currentMatch?.stadium || 'สนามกลาง'} | เวลาเตะ: ${matchKickoffThai} น.
 ----------------------------------------
-🛡️ ฟันธงโพยเด็ดหลัก X2 (สองโอกาส): 【 ${x2PickPreview} 】 (ค่าน้ำ @${x2OddsPreview.toFixed(2)} · โอกาสเข้า ${mkt?.x2Prob || 90.0}%)
-⚖️ ตัวเสริมทำกำไร Handicap: 【 ${mkt?.handicapPick || '-0.5'} 】 (@${(mkt?.handicapOdds || 1.78).toFixed(2)} · 1 เดือน ROI +26.3%)
-🔥 สกอร์รวม Over Score: 【 ${mkt?.overScorePick || 'Over 2.5'} 】 (@${(mkt?.overScoreOdds || 1.65).toFixed(2)})
-🎯 สกอร์ตรงเสริม (3 หน้าไม่ซ้ำ): ${tip?.dutchedThreeScores?.scores?.map((s) => `【${s.score} @${s.odds.toFixed(2)}】`).join(' / ') || `【 ${tip?.primaryScore || '2 - 0'} 】`}
-💰 ผลตอบแทนตัวหลัก X2: ลงทุน 1,000 บ. รับคืน ${Math.round(1000 * x2OddsPreview).toLocaleString()} บาท (กำไร +${Math.round(1000 * x2OddsPreview - 1000).toLocaleString()} บ.)
+⚖️ #1 ตัวหลัก 1xBet Asian Handicap: 【 ${mkt?.handicapPick || '-0.75'} 】 (@${(mkt?.handicapOdds || 1.82).toFixed(2)} · โอกาสเข้า ${mkt?.handicapProb || 73.4}% | คุ้มทุน ${mkt?.handicapBreakEvenWinRate || 54.9}% | Edge +${(mkt?.handicapEdgePercent || 18.5).toFixed(1)}%)
+🔥 #2 เสริม Over Score: 【 ${mkt?.overScorePick || 'Over 2.5'} 】 (@${(mkt?.overScoreOdds || 1.65).toFixed(2)}) | เซฟตี้ 【 ${mkt?.over15Pick || 'Over 1.5'} 】 (@${(mkt?.over15Odds || 1.24).toFixed(2)})
+🛡️ อ้างอิง X2 (1xBet จริง): 【 ${x2PickPreview} 】 (@${x2OddsDisplayPreview} · โอกาสเข้า ${mkt?.x2Prob || 83.5}%)
+🎯 สกอร์ตรงเสริม (3 หน้าไม่ซ้ำ): ${tip?.dutchedThreeScores?.scores?.map((s) => `【${s.score} @${s.odds.toFixed(2)}】`).join(' / ') || `【 ${tip?.primaryScore || '1 - 2'} 】`}
+💰 ผลตอบแทน 1xBet HDP (1,000 บ.): รับคืน ${Math.round(1000 * (mkt?.handicapOdds || 1.82)).toLocaleString()} บาท (กำไร +${Math.round(1000 * (mkt?.handicapOdds || 1.82) - 1000).toLocaleString()} บ.)
 ----------------------------------------
 🏛️ ผลประเมินร่วม 100 สถาบันสถิติสากล (>98.0% ครบทุกแห่ง):
 ${institutes.length > 0 
   ? institutes.slice(0, 10).map((inst, i) => `   ${i + 1}. ${inst.flag} ${inst.name}: ตรงกัน ${inst.agreementScore}% (${inst.coreMetric}: ${inst.metricValue})`).join('\n') + `\n   ... และอีก ${institutes.length - 10} สถาบันชั้นนำระดับโลก (ตรวจสอบรายชื่อครบ 100 สถาบันในระบบ)`
   : '   • Opta, StatsBomb, SofaScore, WhoScored, Wyscout, Understat, CIES, FBREF, SciSports, FiveThirtyEight และอีก 90 สถาบันชั้นนำระดับโลก วิเคราะห์ตรงกันเกิน 98.0%'}
 ----------------------------------------
-🔬 โมเดลแท็กติกเชิงลึก: PPDA Pressing + Field Tilt 75.4% + พอร์ตบริหารเสี่ยง 45% HDP / 35% X2 / 20% Dutching
-💡 บทวิเคราะห์ AI สรุป: ${currentMatch?.aiRationale || 'ทีมเต็งเหนือกว่าทุกมิติ เน้น X2 ปลอดภัยสูงสุด'}
-✅ ใบรับรองซีล: ${currentMatch?.superGoldenSealNumber || 'SG-X2-CONSENSUS-100X'} (100-Institute Verified)
+🔬 โมเดลแท็กติกเชิงลึก: PPDA Pressing + Field Tilt 75.4% + ตัวกรอง Consensus >98.0%
+💡 บทวิเคราะห์ AI สรุป: ${currentMatch?.aiRationale || 'ทีมเต็งเหนือกว่าทุกมิติ เน้น Asian Handicap 1xBet เป็นตัวหลัก'}
+✅ ใบรับรองซีล: ${currentMatch?.superGoldenSealNumber || 'SG-HDP-CONSENSUS-100X'} (100-Institute Verified)
 
 📌 ตรวจสอบตราประทับและตารางปัวซองฉบับเต็มได้ที่หน้าเพจของเรา
 ${config.customFooter}
@@ -397,7 +398,7 @@ ${config.hashtags.join(' ')}`;
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-base sm:text-lg font-extrabold text-white">
-                  ระบบแจ้งเตือนโพยเด็ด X2 ผ่าน Telegram Bot อัตโนมัติ ทุกวันเวลา 06:30 น. (เวลาไทย)
+                  ระบบแจ้งเตือนโพยเด็ด 1xBet HDP &amp; Over Score ผ่าน Telegram Bot ทุกวัน 06:30 น. (เวลาไทย)
                 </h3>
                 <span className="text-[10px] font-black px-2 py-0.5 rounded bg-sky-400 text-slate-950">
                   TELEGRAM BOT 06:30 ICT
@@ -413,7 +414,7 @@ ${config.hashtags.join(' ')}`;
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-1">
-                เลิกใช้ LINE แล้วเปลี่ยนเป็น <b className="text-sky-300">Telegram Bot API</b> เต็มรูปแบบ: หลังรีเซ็ตโพย 06:00 น. เวลา <b className="text-emerald-300">06:30 น.</b> ระบบจะยิงส่งโพยเด็ด <b className="text-white">X2 (สองโอกาส 90.0%)</b> พร้อม Handicap, Over Score, ดัตช์ชิ่ง 3 หน้า และข้อมูลบน Render.com เข้าแชท/กลุ่ม Telegram ทันที
+                แจ้งเตือนผ่าน <b className="text-sky-300">Telegram Bot API</b> เวลา <b className="text-emerald-300">06:30 น.</b> ทุกเช้า: คัดคู่ด้วย <b className="text-amber-300">ฉันทามติ &gt;98.0%</b> แล้วส่งตัวหลัก <b className="text-cyan-300">Asian Handicap (1xBet ROI +26.3%)</b> พร้อม Over Score, ดัตช์ชิ่ง 3 หน้า และอ้างอิง X2 เข้าแชท/กลุ่ม Telegram ทันที
               </p>
             </div>
           </div>

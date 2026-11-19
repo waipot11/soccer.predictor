@@ -49,23 +49,23 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 โหมดตารางแข่งจริง 100% · Render.com 24/7
               </span>
-              <span className="text-amber-300 font-bold bg-amber-950/80 px-2.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-1">
-                <Award className="w-3.5 h-3.5 text-amber-400" />
-                Safe X2 Filter (@1.25 - @1.45 · แม่นยำ 83% - 90%)
+              <span className="text-cyan-300 font-bold bg-cyan-950/80 px-2.5 py-0.5 rounded border border-cyan-500/40 flex items-center gap-1">
+                <Award className="w-3.5 h-3.5 text-cyan-400" />
+                1xBet HDP Primary (ROI +26.3%) · Consensus &gt;98.0%
               </span>
               <span aria-hidden="true" className="text-slate-600">·</span>
               <span className="text-sky-300 font-bold">แจ้งเตือน Telegram 06:30 น.</span>
             </div>
 
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
-              โพยเด็ดซูเปอร์โกลเด้นสลิป X2 <br className="hidden sm:inline" />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-sky-300 to-amber-300">
-                Safe X2 @1.25-@1.45 · 83%-90% จริง
+              โพยเด็ดซูเปอร์โกลเด้นสลิป HDP <br className="hidden sm:inline" />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-emerald-300 to-amber-300">
+                Asian Handicap 1xBet · กรอง 98%+
               </span>
             </h1>
 
             <p className="text-base text-slate-300 leading-relaxed max-w-2xl">
-              ใช้ระบบคัดกรอง <strong className="text-emerald-300">Safe High-Accuracy X2 (ค่าน้ำขั้นต่ำ @1.25 - @1.45 · แม่นยำจริง 83% - 90%)</strong> กรองทิ้งคู่ราคาขยะอย่าง 1.016 ออกทั้งหมด เพื่อความปลอดภัยและผลตอบแทนที่คุ้มค่าจริง พร้อมจัดส่งแจ้งเตือนเข้า <strong className="text-sky-300">Telegram Bot ทุก 06:30 น.</strong> บนเซิร์ฟเวอร์ <strong className="text-amber-300">Render.com</strong>
+              ใช้เกณฑ์เข้มงวด <strong className="text-amber-300">ฉันทามติ 100 สถาบัน &amp; 5 ปัจจัย &gt;98.0%</strong> คัดเฉพาะคู่เหนือกว่าจริง แล้ววาง <strong className="text-cyan-300">Asian Handicap (HDP) อิงค่าน้ำ 1xBet (@1.76–@1.85 · ROI +26.3%)</strong> คู่กับ <strong className="text-emerald-300">Over Score</strong> เพื่อกำไรคุ้มค่าจริง ส่งแจ้งเตือนเข้า <strong className="text-sky-300">Telegram Bot ทุก 06:30 น.</strong>
             </p>
 
             {/* Quick Action Buttons */}
@@ -77,15 +77,15 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                   className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 active:scale-[0.98] rounded-lg transition-all shadow-lg shadow-amber-500/20 cursor-pointer whitespace-nowrap disabled:opacity-50"
                 >
                   <Dices className={`w-4 h-4 ${isRandomPicking ? 'animate-spin' : ''}`} />
-                  <span>{isRandomPicking ? 'กำลังสุ่มวิเคราะห์...' : '🎲 สุ่มคู่โกลด์ X2 ประจำวัน'}</span>
+                  <span>{isRandomPicking ? 'กำลังสุ่มวิเคราะห์...' : '🎲 สุ่มคู่โกลด์ 1xBet HDP (>98%)'}</span>
                 </button>
               )}
 
               <button
                 onClick={onScrollToSlip}
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 active:scale-[0.98] rounded-lg transition-all shadow-md shadow-emerald-500/20 cursor-pointer whitespace-nowrap"
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-slate-950 bg-cyan-400 hover:bg-cyan-300 active:scale-[0.98] rounded-lg transition-all shadow-md shadow-cyan-500/20 cursor-pointer whitespace-nowrap"
               >
-                <span>ตรวจโพย X2 &amp; สถิติ 100 สถาบัน</span>
+                <span>ตรวจโพย HDP &amp; สถิติ 100 สถาบัน</span>
                 <ArrowDown className="w-4 h-4" />
               </button>
 
@@ -109,21 +109,25 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
             </div>
           </div>
 
-          {/* Quick Metrics Card - Super Golden X2 Slip Showcase */}
+          {/* Quick Metrics Card - Super Golden HDP Slip Showcase */}
           <div className="lg:col-span-4">
-            <div className="rounded-3xl border-2 border-emerald-500/50 bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/35 p-6 backdrop-blur-md shadow-2xl space-y-4">
+            <div className="rounded-3xl border-2 border-cyan-500/60 bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/35 p-6 backdrop-blur-md shadow-2xl space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 font-black text-lg shadow-md shadow-emerald-500/20">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-950 font-black text-lg shadow-md bg-gradient-to-br from-cyan-400 to-emerald-400 shadow-cyan-500/25">
                     <ShieldCheck className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-extrabold text-white">โพยเด็ดซูเปอร์โกลเด้น X2</h2>
-                    <p className="text-[11px] text-emerald-300 font-semibold">Safe Filter @1.25-@1.45 (83%-90%)</p>
+                    <h2 className="text-sm font-extrabold text-white">โพยเด็ดซูเปอร์โกลเด้น HDP</h2>
+                    <p className="text-[11px] text-cyan-300 font-semibold">อิงราคา 1xBet · คัดกรอง Consensus &gt;98%</p>
                   </div>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  {mkt?.isValueX2Qualified === false ? 'FILTER WARNING' : 'SAFE X2 VERIFIED'}
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                  mkt?.isValueHdpQualified === false
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                    : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                }`}>
+                  {mkt?.isValueHdpQualified === false ? 'WAIT EDGE' : '1xBET HDP >98%'}
                 </span>
               </div>
 
@@ -154,31 +158,38 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                 </div>
               )}
 
-              {/* Golden X2 Box */}
-              <div className="p-4 rounded-2xl bg-slate-950/90 border border-emerald-500/50 space-y-3 shadow-inner">
+              {/* Golden 1xBet Asian Handicap Box (Primary) */}
+              <div className="p-4 rounded-2xl bg-slate-950/90 border border-cyan-500/60 space-y-3 shadow-inner">
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <div className="text-[11px] font-semibold text-emerald-400 flex items-center gap-1">
+                    <div className="text-[11px] font-semibold flex items-center gap-1 text-cyan-400">
                       <Target className="w-3.5 h-3.5" />
-                      <span>โพยเด็ดตัวหลัก Safe X2</span>
+                      <span>#1 ตัวหลัก 1xBet Asian Handicap</span>
                     </div>
-                    <div className="text-xl sm:text-2xl font-black text-white tracking-wide mt-1">
-                      【 {mkt?.x2Pick || match?.recommendedPick || '1X / X2'} 】
+                    <div className="text-lg sm:text-xl font-black text-white tracking-wide mt-1">
+                      【 {mkt?.handicapPick || `${match?.awayTeam || 'Team'} -0.75 (1xBet HDP)`} 】
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="text-[10px] text-slate-400">ค่าน้ำ / โอกาสเข้า</span>
-                    <div className="text-2xl font-black text-emerald-400 tabular-nums">
-                      @{(mkt?.x2Odds || match?.x2EstimatedOdds || 1.28).toFixed(2)}
+                    <span className="text-[10px] text-slate-400">{mkt?.isVerified1xBetHdp ? '1xBet จริง' : '1xBet HDP'}</span>
+                    <div className="text-2xl font-black tabular-nums text-cyan-400">
+                      @{(mkt?.handicapOdds ?? match?.hdpOdds1xBet ?? match?.hdpEstimatedOdds ?? 1.82).toFixed(2)}
                     </div>
-                    <span className="text-[10px] text-sky-300 font-bold">เข้า {mkt?.x2Prob || 87.3}%</span>
+                    <span className="text-[10px] text-emerald-300 font-bold">
+                      เข้า {mkt?.handicapProb ?? match?.hdpEstimatedProb ?? 73.4}%
+                    </span>
                   </div>
                 </div>
 
+                <div className="text-[10px] text-emerald-300 bg-emerald-950/50 border border-emerald-500/30 rounded-lg px-2.5 py-1.5 flex items-center justify-between">
+                  <span>คุ้มทุน: <strong className="font-mono">{mkt?.handicapBreakEvenWinRate ?? match?.hdpBreakEvenRate ?? 54.9}%</strong></span>
+                  <span>Edge เชิงคณิตศาสตร์: <strong className="font-mono text-amber-300">+{(mkt?.handicapEdgePercent ?? match?.hdpEdgePercent ?? 18.5).toFixed(1)}%</strong></span>
+                </div>
+
                 <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs">
-                  <span className="text-slate-400">เสริม Handicap:</span>
+                  <span className="text-slate-400">#2 เสริม Over Score:</span>
                   <span className="font-bold text-amber-300">
-                    {mkt?.handicapPick || '-1.0'} @{(mkt?.handicapOdds || 1.80).toFixed(2)}
+                    {mkt?.overScorePick || 'Over 2.5'} @{(mkt?.overScoreOdds || 1.65).toFixed(2)} · {mkt?.over15Pick || 'Over 1.5'} @{(mkt?.over15Odds || 1.24).toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -210,9 +221,9 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
               <div className="text-[11px] text-slate-400 flex items-center justify-between bg-slate-950/40 px-3 py-2 rounded-xl border border-slate-800/60">
                 <span className="flex items-center gap-1 text-emerald-400 font-medium truncate">
                   <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">ซีล: {match?.superGoldenSealNumber || 'SG-X2-CONSENSUS'}</span>
+                  <span className="truncate">ซีล: {match?.superGoldenSealNumber || 'SG-HDP-CONSENSUS'}</span>
                 </span>
-                <span className="text-amber-400 font-bold shrink-0">X2 MAIN</span>
+                <span className="text-cyan-400 font-bold shrink-0">1xBET HDP</span>
               </div>
             </div>
           </div>

@@ -206,7 +206,7 @@ export default function App() {
   };
 
   // Add custom real-world match fixture
-  const handleAddCustomMatch = async (customMatch: { homeTeam: string; awayTeam: string; league?: string; decimalOdds?: number }) => {
+  const handleAddCustomMatch = async (customMatch: { homeTeam: string; awayTeam: string; league?: string; decimalOdds?: number; x2Odds1xBet?: number }) => {
     try {
       setIsLoading(true);
       const res = await fetch('/api/football/add-custom-match', {
@@ -217,8 +217,9 @@ export default function App() {
       const data = await res.json();
       if (data.success && data.accumulator) {
         setAccumulator(data.accumulator);
-        if (data.accumulator.correctScoreTip) {
-          setCorrectScoreTip(data.accumulator.correctScoreTip);
+        if (data.pool) setQualifiedPool(data.pool);
+        if (data.tip || data.accumulator.correctScoreTip) {
+          setCorrectScoreTip(data.tip || data.accumulator.correctScoreTip);
         }
         showToast(`เพิ่มคู่แข่งขันจริง ${customMatch.homeTeam} vs ${customMatch.awayTeam} สำเร็จ!`);
       } else {
@@ -229,6 +230,52 @@ export default function App() {
       showToast('เกิดข้อผิดพลาดในการเพิ่มคู่แข่งขัน', 'error');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Update live 1xBet X2 odds for the active match
+  const handleUpdateX2Odds = async (matchId: string, x2Odds1xBet: number) => {
+    try {
+      const res = await fetch('/api/football/update-x2-odds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matchId, x2Odds1xBet }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (data.tip) setCorrectScoreTip(data.tip);
+        if (data.pool) setQualifiedPool(data.pool);
+        if (data.accumulator) setAccumulator(data.accumulator);
+        showToast(data.message || `อัปเดตค่าน้ำ 1xBet X2 จริง @${x2Odds1xBet} สำเร็จ!`);
+      } else {
+        showToast(data.error || 'ไม่สามารถอัปเดตค่าน้ำ X2 ได้', 'error');
+      }
+    } catch (err) {
+      console.error('Error updating 1xBet X2 odds:', err);
+      showToast('เกิดข้อผิดพลาดในการอัปเดตค่าน้ำ 1xBet', 'error');
+    }
+  };
+
+  // Update live 1xBet Asian Handicap line & odds for the active match
+  const handleUpdateHdpOdds = async (matchId: string, hdpLine1xBet: string, hdpOdds1xBet: number) => {
+    try {
+      const res = await fetch('/api/football/update-hdp-odds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matchId, hdpLine1xBet, hdpOdds1xBet }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (data.tip) setCorrectScoreTip(data.tip);
+        if (data.pool) setQualifiedPool(data.pool);
+        if (data.accumulator) setAccumulator(data.accumulator);
+        showToast(data.message || `อัปเดตราคา 1xBet HDP (${hdpLine1xBet} @${hdpOdds1xBet}) สำเร็จ!`);
+      } else {
+        showToast(data.error || 'ไม่สามารถอัปเดตราคา HDP ได้', 'error');
+      }
+    } catch (err) {
+      console.error('Error updating 1xBet HDP odds:', err);
+      showToast('เกิดข้อผิดพลาดในการอัปเดตราคา HDP 1xBet', 'error');
     }
   };
 
@@ -504,6 +551,8 @@ export default function App() {
             onOptimizeUltraSafe={handleOptimizeUltraSafe}
             isOptimizingUltraSafe={isOptimizingUltraSafe}
             onAddCustomMatch={handleAddCustomMatch}
+            onUpdateX2Odds={handleUpdateX2Odds}
+            onUpdateHdpOdds={handleUpdateHdpOdds}
           />
         )}
 
