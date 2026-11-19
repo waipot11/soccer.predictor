@@ -51,7 +51,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
               </span>
               <span className="text-amber-300 font-bold bg-amber-950/80 px-2.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-1">
                 <Award className="w-3.5 h-3.5 text-amber-400" />
-                X2 สองโอกาส (Win Rate 90.0% สูงสุด #1 รอบ 1 เดือน)
+                Safe X2 Filter (@1.25 - @1.45 · แม่นยำ 83% - 90%)
               </span>
               <span aria-hidden="true" className="text-slate-600">·</span>
               <span className="text-sky-300 font-bold">แจ้งเตือน Telegram 06:30 น.</span>
@@ -60,12 +60,12 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
               โพยเด็ดซูเปอร์โกลเด้นสลิป X2 <br className="hidden sm:inline" />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-sky-300 to-amber-300">
-                Double Chance 90% · Telegram &amp; Render.com
+                Safe X2 @1.25-@1.45 · 83%-90% จริง
               </span>
             </h1>
 
             <p className="text-base text-slate-300 leading-relaxed max-w-2xl">
-              อัปเกรดตามสถิติความน่าจะเป็นจริงรอบ 1 เดือนล่าสุด: ปรับโพยเด็ดหลักเป็น <strong className="text-emerald-300">X2 / 1X สองโอกาส (เข้าเป้าสูงสุด 90.0% · หลุดติดไม่เกิน 1 นัด)</strong> พร้อมทางเลือก <strong className="text-white">Asian Handicap (ROI +26.3%)</strong> และจัดส่งแจ้งเตือนคู่โกลด์เข้า <strong className="text-sky-300">Telegram Bot ทุก 06:30 น.</strong> บนเซิร์ฟเวอร์ <strong className="text-amber-300">Render.com</strong>
+              ใช้ระบบคัดกรอง <strong className="text-emerald-300">Safe High-Accuracy X2 (ค่าน้ำขั้นต่ำ @1.25 - @1.45 · แม่นยำจริง 83% - 90%)</strong> กรองทิ้งคู่ราคาขยะอย่าง 1.016 ออกทั้งหมด เพื่อความปลอดภัยและผลตอบแทนที่คุ้มค่าจริง พร้อมจัดส่งแจ้งเตือนเข้า <strong className="text-sky-300">Telegram Bot ทุก 06:30 น.</strong> บนเซิร์ฟเวอร์ <strong className="text-amber-300">Render.com</strong>
             </p>
 
             {/* Quick Action Buttons */}
@@ -119,11 +119,11 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                   </div>
                   <div>
                     <h2 className="text-sm font-extrabold text-white">โพยเด็ดซูเปอร์โกลเด้น X2</h2>
-                    <p className="text-[11px] text-emerald-300 font-semibold">Double Chance 90% Win Rate</p>
+                    <p className="text-[11px] text-emerald-300 font-semibold">Safe Filter @1.25-@1.45 (83%-90%)</p>
                   </div>
                 </div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  X2 #1 RANK
+                  {mkt?.isValueX2Qualified === false ? 'FILTER WARNING' : 'SAFE X2 VERIFIED'}
                 </span>
               </div>
 
@@ -160,7 +160,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                   <div>
                     <div className="text-[11px] font-semibold text-emerald-400 flex items-center gap-1">
                       <Target className="w-3.5 h-3.5" />
-                      <span>โพยเด็ดตัวหลัก X2 สองโอกาส</span>
+                      <span>โพยเด็ดตัวหลัก Safe X2</span>
                     </div>
                     <div className="text-xl sm:text-2xl font-black text-white tracking-wide mt-1">
                       【 {mkt?.x2Pick || match?.recommendedPick || '1X / X2'} 】
@@ -169,9 +169,9 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                   <div className="text-right shrink-0">
                     <span className="text-[10px] text-slate-400">ค่าน้ำ / โอกาสเข้า</span>
                     <div className="text-2xl font-black text-emerald-400 tabular-nums">
-                      @{(mkt?.x2Odds || match?.decimalOdds || 1.15).toFixed(2)}
+                      @{(mkt?.x2Odds || match?.x2EstimatedOdds || 1.28).toFixed(2)}
                     </div>
-                    <span className="text-[10px] text-sky-300 font-bold">เข้า {mkt?.x2Prob || 90.0}%</span>
+                    <span className="text-[10px] text-sky-300 font-bold">เข้า {mkt?.x2Prob || 87.3}%</span>
                   </div>
                 </div>
 

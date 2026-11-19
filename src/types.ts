@@ -133,6 +133,11 @@ export interface MatchFixture {
     verificationNote: string;
   };
 
+  // Safe High-Accuracy X2 Filter (@1.25 - @1.45, 83%-90% real probability)
+  x2EstimatedOdds?: number;
+  x2EstimatedProb?: number;
+  isValueX2Qualified?: boolean;
+
   // Deep Tactical & Positional Breakdown
   tacticalAnalysis?: TacticalAnalysis;
 }
@@ -211,6 +216,8 @@ export interface CorrectScoreTip {
     x2Pick: string;
     x2Odds: number;
     x2Prob: number;
+    isValueX2Qualified: boolean;
+    x2FilterNote: string;
     handicapPick: string;
     handicapOdds: number;
     handicapProb: number;
