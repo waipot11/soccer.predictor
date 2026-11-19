@@ -1,0 +1,69 @@
+{
+  "updatedAt": "2026-11-19T01:49:38.933Z",
+  "telegramConfig": {
+    "isEnabled": true,
+    "sendTimeThai": "06:30",
+    "botToken": "",
+    "chatId": "",
+    "customWebhookUrl": "",
+    "includeMarketComparison": true,
+    "lastSentDateKey": "20261119",
+    "lastSentAt": "2026-11-19T01:49:38.933Z"
+  },
+  "telegramLogs": [
+    {
+      "id": "tg-log-1795052978933",
+      "timestamp": "2026-11-19T01:49:38.933Z",
+      "dateKey": "20261119",
+      "triggerType": "DAILY_0630_CRON",
+      "status": "SIMULATED",
+      "chatId": "SANDBOX_PREVIEW",
+      "matchTitle": "FC Barcelona W vs Servette FCCF W",
+      "messagePreview": "✈️ [KickAI Super Golden X2 Alert · 06:30 น.]\n📅 วันพฤหัสบดีที่ 19 พฤศจิกายน 2569 (อัปเดต 06:00 น. / แจ้งเตือน Telegram 06:30 น.)\n━━━━━━━━━━━━━━━━━━━━\n⚽ คู่โกลด์ประจำวัน: [UEFA Women's Champions League (Matchday 5 คืนนี้ วันพฤหัสบดี 19 พ.ย.)]\n🏟️ FC Barcelona W พบ Servette FCCF W\n⏰ เตะจริง: 20:00 น. เวลาไทย (ยืนยันโปรแกรมจริง 100%)\n━━━━━━━━━━━━━━━━━━━━\n🛡️ โพยเด็ดหลัก X2 สองโอกาส (สถิติเข้าสูงสุด #1):\n👉 1X (FC Barcelona W ชนะ/เสมอ) @1.08 (โอกาสเข้า 93.5%)\n⚖️ แนวทางเสริม HDP: FC Barcelona W ต่อ -1.5 (Asian HDP) @1.82 (77.6%)\n🔥 สกอร์สูง/ต่ำ: สกอร์สูง (Over 2.5 ประตู) @1.65 (82.6%)\n🎯 ดัตช์ชิ่ง 3 สกอร์ (ไม่ซ้ำ · น้ำเฉลี่ย @2.20):\n  1) 【3 - 0】 @6.00 (แบ่งลง 37%)\n  2) 【4 - 0】 @6.50 (แบ่งลง 34%)\n  3) 【2 - 0】 @7.50 (แบ่งลง 29%)\n━━━━━━━━━━━━━━━━━━━━\n📊 สถิติจริง 30 วันล่าสุด:\n• X2 สองโอกาส: เข้า 90% (#1 ชัวร์สุด)\n• Handicap HDP: เข้า 70.4% (ROI +26.3%)\n• Over Score: เข้า 66.7% (ROI +6.5%)\n━━━━━━━━━━━━━━━━━━━━\n☁️ Server: Render.com 24/7 | พอร์ตแนะนำ: X2 (35%) + HDP (45%) + ดัตช์ชิ่ง (20%)",
+      "apiResponseMsg": "โหมดจำลอง (กรุณาระบุ Telegram Bot Token และ Chat ID เพื่อส่งเข้า Telegram จริง)"
+    },
+    {
+      "id": "tg-log-1795052978857",
+      "timestamp": "2026-11-19T01:49:38.857Z",
+      "dateKey": "20261119",
+      "triggerType": "DAILY_0630_CRON",
+      "status": "SIMULATED",
+      "chatId": "SANDBOX_PREVIEW",
+      "matchTitle": "FC Barcelona W vs Servette FCCF W",
+      "messagePreview": "✈️ [KickAI Super Golden X2 Alert · 06:30 น.]\n📅 วันพฤหัสบดีที่ 19 พฤศจิกายน 2569 (อัปเดต 06:00 น. / แจ้งเตือน Telegram 06:30 น.)\n━━━━━━━━━━━━━━━━━━━━\n⚽ คู่โกลด์ประจำวัน: [UEFA Women's Champions League (Matchday 5 คืนนี้ วันพฤหัสบดี 19 พ.ย.)]\n🏟️ FC Barcelona W พบ Servette FCCF W\n⏰ เตะจริง: 20:00 น. เวลาไทย (ยืนยันโปรแกรมจริง 100%)\n━━━━━━━━━━━━━━━━━━━━\n🛡️ โพยเด็ดหลัก X2 สองโอกาส (สถิติเข้าสูงสุด #1):\n👉 1X (FC Barcelona W ชนะ/เสมอ) @1.08 (โอกาสเข้า 93.5%)\n⚖️ แนวทางเสริม HDP: FC Barcelona W ต่อ -1.5 (Asian HDP) @1.82 (77.6%)\n🔥 สกอร์สูง/ต่ำ: สกอร์สูง (Over 2.5 ประตู) @1.65 (82.6%)\n🎯 ดัตช์ชิ่ง 3 สกอร์ (ไม่ซ้ำ · น้ำเฉลี่ย @2.20):\n  1) 【3 - 0】 @6.00 (แบ่งลง 37%)\n  2) 【4 - 0】 @6.50 (แบ่งลง 34%)\n  3) 【2 - 0】 @7.50 (แบ่งลง 29%)\n━━━━━━━━━━━━━━━━━━━━\n📊 สถิติจริง 30 วันล่าสุด:\n• X2 สองโอกาส: เข้า 90% (#1 ชัวร์สุด)\n• Handicap HDP: เข้า 70.4% (ROI +26.3%)\n• Over Score: เข้า 66.7% (ROI +6.5%)\n━━━━━━━━━━━━━━━━━━━━\n☁️ Server: Render.com 24/7 | พอร์ตแนะนำ: X2 (35%) + HDP (45%) + ดัตช์ชิ่ง (20%)",
+      "apiResponseMsg": "โหมดจำลอง (กรุณาระบุ Telegram Bot Token และ Chat ID เพื่อส่งเข้า Telegram จริง)"
+    }
+  ],
+  "facebookConfig": {
+    "pageId": "109827364512903",
+    "pageName": "KickAI วิเคราะห์บอล VIP & โพย X2 90% Win",
+    "pageAccessToken": "",
+    "autoPostLeadHours": 6,
+    "isEnabled": true,
+    "hashtags": [
+      "#ทีเด็ดบอล",
+      "#X2สองโอกาส",
+      "#DoubleChance",
+      "#บอลเต็งวันนี้",
+      "#วิเคราะห์บอลVIP",
+      "#ยูฟ่าแชมเปียนส์ลีก",
+      "#ทีเด็ดAI"
+    ],
+    "customFooter": "⚠️ คำเตือน: ข้อมูลสถิติและการวิเคราะห์จัดทำขึ้นเพื่อการศึกษาและการวิเคราะห์ทางคณิตศาสตร์เท่านั้น ควรมีวินัยในการลงทุน",
+    "notifyOnSuccess": true
+  },
+  "postLogs": [
+    {
+      "id": "log-001",
+      "timestamp": "2026-11-18T01:49:33.927Z",
+      "triggerType": "AUTOMATIC_SCHEDULER",
+      "ticketId": "SG-SLIP-PREV",
+      "status": "SUCCESS",
+      "pageId": "109827364512903",
+      "fbPostId": "fb_post_x2_prev_01",
+      "leadTimeHours": 6,
+      "postContent": "🛡️ ทีเด็ด VIP X2 สองโอกาส (BK Häcken W vs Man City W - X2) จบ 0-2 เข้าเป้า 100%!",
+      "apiResponseMsg": "HTTP 200 OK: Facebook Graph API v19.0 feed published successfully"
+    }
+  ]
+}
