@@ -25,6 +25,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
   const match = tip?.selectedMatch;
   const mkt = tip?.marketRecommendations;
   const consensusRate = tip?.consensusAgreementRate || match?.consensusAgreementRate || 99.2;
+  const isNeedsLiveSync = Boolean(match?.id?.startsWith('needs-live-sync-') || tip?.verificationSource === 'NEEDS_LIVE_SYNC');
 
   return (
     <div className="relative overflow-hidden border-b border-slate-800 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
@@ -111,10 +112,14 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
 
           {/* Quick Metrics Card - Super Golden HDP Slip Showcase */}
           <div className="lg:col-span-4">
-            <div className="rounded-3xl border-2 border-cyan-500/60 bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/35 p-6 backdrop-blur-md shadow-2xl space-y-4">
+            <div className={`rounded-3xl border-2 bg-gradient-to-br from-slate-900 via-slate-900 p-6 backdrop-blur-md shadow-2xl space-y-4 ${
+              isNeedsLiveSync ? 'border-amber-500/70 to-amber-950/35' : 'border-cyan-500/60 to-cyan-950/35'
+            }`}>
               <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-950 font-black text-lg shadow-md bg-gradient-to-br from-cyan-400 to-emerald-400 shadow-cyan-500/25">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-slate-950 font-black text-lg shadow-md ${
+                    isNeedsLiveSync ? 'bg-amber-400 shadow-amber-500/25' : 'bg-gradient-to-br from-cyan-400 to-emerald-400 shadow-cyan-500/25'
+                  }`}>
                     <ShieldCheck className="w-5 h-5" />
                   </div>
                   <div>
@@ -123,11 +128,11 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                   </div>
                 </div>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                  mkt?.isValueHdpQualified === false
+                  isNeedsLiveSync || mkt?.isValueHdpQualified === false
                     ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                     : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
                 }`}>
-                  {mkt?.isValueHdpQualified === false ? 'WAIT EDGE' : '1xBET HDP >98%'}
+                  {isNeedsLiveSync ? 'NEEDS SYNC' : mkt?.isValueHdpQualified === false ? 'WAIT EDGE' : '1xBET HDP >98%'}
                 </span>
               </div>
 
@@ -139,65 +144,82 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                       <span>{match.leagueFlag}</span>
                       <span className="truncate">{match.league}</span>
                     </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1 shrink-0">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                      <span>เตะ {new Date(match.kickOffTime).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.</span>
-                    </span>
+                    {!isNeedsLiveSync && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1 shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span>เตะ {new Date(match.kickOffTime).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.</span>
+                      </span>
+                    )}
                   </div>
                   <div className="text-lg font-black text-white flex items-center justify-between">
                     <span>{match.homeTeam}</span>
-                    <span className="text-xs text-slate-500 font-normal px-2">พบ</span>
-                    <span>{match.awayTeam}</span>
+                    {!isNeedsLiveSync && <span className="text-xs text-slate-500 font-normal px-2">พบ</span>}
+                    <span className={isNeedsLiveSync ? 'text-xs text-amber-300 font-semibold' : ''}>{match.awayTeam}</span>
                   </div>
                   <div className="text-[11px] text-amber-300/90 bg-amber-950/40 px-2.5 py-1 rounded-lg border border-amber-500/30 flex items-center justify-between">
-                    <span>⏳ ล็อกเวลาแข่งจริง:</span>
+                    <span>{isNeedsLiveSync ? '🔄 สถานะ:' : '⏳ ล็อกเวลาแข่งจริง:'}</span>
                     <span className="font-mono font-bold text-amber-300">
-                      {match.tacticalAnalysis?.timeLockVerification || 'Upcoming Fixture Locked'}
+                      {isNeedsLiveSync ? 'รอซิงค์ตารางจริงประจำวัน' : (match.tacticalAnalysis?.timeLockVerification || 'Upcoming Fixture Locked')}
                     </span>
                   </div>
                 </div>
               )}
 
-              {/* Golden 1xBet Asian Handicap Box (Primary) */}
-              <div className="p-4 rounded-2xl bg-slate-950/90 border border-cyan-500/60 space-y-3 shadow-inner">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <div className="text-[11px] font-semibold flex items-center gap-1 text-cyan-400">
-                      <Target className="w-3.5 h-3.5" />
-                      <span>#1 ตัวหลัก 1xBet Asian Handicap</span>
+              {/* Golden 1xBet Asian Handicap Box (Primary) or Sync Warning */}
+              {isNeedsLiveSync ? (
+                <div className="p-4 rounded-2xl bg-amber-950/50 border border-amber-500/60 space-y-2.5 text-xs">
+                  <div className="font-black text-amber-300 text-sm">🔄 ยังไม่มีข้อมูลโปรแกรมจริงที่ยืนยันสำหรับวันนี้</div>
+                  <p className="text-slate-300 leading-relaxed">
+                    ระบบตัดรอบ 06:00 น. เวลาไทยเรียบร้อยแล้ว เพื่อป้องกันการออกโพยมั่ว ระบบไม่แสดงราคาต่อหรือค่าน้ำสมมติ กดปุ่ม <strong className="text-cyan-300">ตรวจโพย HDP &amp; สถิติ</strong> เพื่อซิงค์ตารางจริงสด AI
+                  </p>
+                  <button
+                    onClick={onScrollToSlip}
+                    className="w-full py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black cursor-pointer transition-colors"
+                  >
+                    ⚡ ไปกดซิงค์ตารางจริงสด AI / เพิ่มคู่จริง 1xBet
+                  </button>
+                </div>
+              ) : (
+                <div className="p-4 rounded-2xl bg-slate-950/90 border border-cyan-500/60 space-y-3 shadow-inner">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-[11px] font-semibold flex items-center gap-1 text-cyan-400">
+                        <Target className="w-3.5 h-3.5" />
+                        <span>#1 ตัวหลัก 1xBet Asian Handicap</span>
+                      </div>
+                      <div className="text-lg sm:text-xl font-black text-white tracking-wide mt-1">
+                        【 {mkt?.handicapPick || `${match?.awayTeam || 'Team'} -0.75 (1xBet HDP)`} 】
+                      </div>
                     </div>
-                    <div className="text-lg sm:text-xl font-black text-white tracking-wide mt-1">
-                      【 {mkt?.handicapPick || `${match?.awayTeam || 'Team'} -0.75 (1xBet HDP)`} 】
+                    <div className="text-right shrink-0">
+                      <span className="text-[10px] text-slate-400">{mkt?.isVerified1xBetHdp ? '1xBet จริง' : '1xBet HDP'}</span>
+                      <div className="text-2xl font-black tabular-nums text-cyan-400">
+                        @{(mkt?.handicapOdds ?? match?.hdpOdds1xBet ?? match?.hdpEstimatedOdds ?? 1.82).toFixed(2)}
+                      </div>
+                      <span className="text-[10px] text-emerald-300 font-bold">
+                        เข้า {mkt?.handicapProb ?? match?.hdpEstimatedProb ?? 73.4}%
+                      </span>
                     </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-[10px] text-slate-400">{mkt?.isVerified1xBetHdp ? '1xBet จริง' : '1xBet HDP'}</span>
-                    <div className="text-2xl font-black tabular-nums text-cyan-400">
-                      @{(mkt?.handicapOdds ?? match?.hdpOdds1xBet ?? match?.hdpEstimatedOdds ?? 1.82).toFixed(2)}
-                    </div>
-                    <span className="text-[10px] text-emerald-300 font-bold">
-                      เข้า {mkt?.handicapProb ?? match?.hdpEstimatedProb ?? 73.4}%
+
+                  <div className="text-[10px] text-emerald-300 bg-emerald-950/50 border border-emerald-500/30 rounded-lg px-2.5 py-1.5 flex items-center justify-between">
+                    <span>คุ้มทุน: <strong className="font-mono">{mkt?.handicapBreakEvenWinRate ?? match?.hdpBreakEvenRate ?? 55.6}%</strong></span>
+                    {(() => {
+                      const edgeVal = mkt?.handicapEdgePercent ?? match?.hdpEdgePercent ?? 18.1;
+                      return (
+                        <span>Edge เชิงคณิตศาสตร์: <strong className={`font-mono ${edgeVal >= 0 ? 'text-amber-300' : 'text-rose-300'}`}>{edgeVal >= 0 ? `+${edgeVal.toFixed(1)}%` : `${edgeVal.toFixed(1)}%`}</strong></span>
+                      );
+                    })()}
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs">
+                    <span className="text-slate-400">#2 เสริม Over Score:</span>
+                    <span className="font-bold text-amber-300">
+                      {mkt?.overScorePick || 'Over 2.5'} @{(mkt?.overScoreOdds || 1.65).toFixed(2)} · {mkt?.over15Pick || 'Over 1.5'} @{(mkt?.over15Odds || 1.24).toFixed(2)}
                     </span>
                   </div>
                 </div>
-
-                <div className="text-[10px] text-emerald-300 bg-emerald-950/50 border border-emerald-500/30 rounded-lg px-2.5 py-1.5 flex items-center justify-between">
-                  <span>คุ้มทุน: <strong className="font-mono">{mkt?.handicapBreakEvenWinRate ?? match?.hdpBreakEvenRate ?? 55.6}%</strong></span>
-                  {(() => {
-                    const edgeVal = mkt?.handicapEdgePercent ?? match?.hdpEdgePercent ?? 18.1;
-                    return (
-                      <span>Edge เชิงคณิตศาสตร์: <strong className={`font-mono ${edgeVal >= 0 ? 'text-amber-300' : 'text-rose-300'}`}>{edgeVal >= 0 ? `+${edgeVal.toFixed(1)}%` : `${edgeVal.toFixed(1)}%`}</strong></span>
-                    );
-                  })()}
-                </div>
-
-                <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs">
-                  <span className="text-slate-400">#2 เสริม Over Score:</span>
-                  <span className="font-bold text-amber-300">
-                    {mkt?.overScorePick || 'Over 2.5'} @{(mkt?.overScoreOdds || 1.65).toFixed(2)} · {mkt?.over15Pick || 'Over 1.5'} @{(mkt?.over15Odds || 1.24).toFixed(2)}
-                  </span>
-                </div>
-              </div>
+              )}
 
               {/* Consensus Agreement & Institutes Count */}
               <div className="grid grid-cols-2 gap-2.5 pt-1">

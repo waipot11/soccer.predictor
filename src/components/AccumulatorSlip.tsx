@@ -119,6 +119,7 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
   // Active Tip & Selected Match
   const tip = correctScoreTip || accumulator.correctScoreTip;
   const match = tip?.selectedMatch;
+  const isNeedsLiveSync = Boolean(match?.id?.startsWith('needs-live-sync-') || tip?.verificationSource === 'NEEDS_LIVE_SYNC');
 
   const primaryOdds = tip?.primaryOdds || 6.50;
   const secondaryOdds = tip?.secondaryOdds || 7.80;
@@ -580,7 +581,7 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
       </div>
 
       {/* 1xBet Random Criteria Filter Bar + Real Fixtures Quick Selector */}
-      {qualifiedPool && qualifiedPool.length > 0 && (() => {
+      {!isNeedsLiveSync && qualifiedPool && qualifiedPool.length > 0 && (() => {
         const activeCriteria: RandomPickOneXBetCriteria = oneXBetRandomCriteria || {
           requireQuarterLine: true,
           maxAbsHdpLine: 2.0,
@@ -901,6 +902,29 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
 
               {/* MODE 1 (DEFAULT PRIMARY): SAFE HIGH-ACCURACY X2 (@1.25-@1.45, 83%-90% REAL 1xBet CALIBRATION) */}
               {activeTipStrategyMode === 'X2_PRIMARY' && (() => {
+                if (isNeedsLiveSync) {
+                  return (
+                    <div className="rounded-2xl border-2 border-amber-500/80 bg-gradient-to-br from-amber-950/50 via-slate-950 to-slate-950 p-6 shadow-2xl space-y-4">
+                      <div className="text-sm font-black text-amber-300 flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5" />
+                        <span>🔄 ยังไม่มีข้อมูลตารางแข่งจริงที่ยืนยันสำหรับวันนี้ (งดแสดงราคา X2 สมมติ)</span>
+                      </div>
+                      <p className="text-xs text-slate-300 leading-relaxed">
+                        เมื่อถึงเวลา 06:00 น. ระบบจะขึ้นวันใหม่และไม่แสดงราคาหลอกหากยังไม่มีโปรแกรมที่ยืนยัน กดปุ่มด้านล่างเพื่อค้นหาตารางแข่งจริงสดจาก Google Search AI
+                      </p>
+                      <button
+                        type="button"
+                        onClick={onSyncRealSchedule}
+                        disabled={isSyncingReal}
+                        className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs cursor-pointer flex items-center gap-2"
+                      >
+                        <Globe2 className={`w-4 h-4 ${isSyncingReal ? 'animate-spin' : ''}`} />
+                        <span>{isSyncingReal ? 'กำลังค้นหาตารางจริง...' : '⚡ ค้นหาตารางจริงสด AI ทันที'}</span>
+                      </button>
+                    </div>
+                  );
+                }
+
                 const mkt = tip?.marketRecommendations;
                 const x2Pick = mkt?.x2Pick || `${match.homexG >= match.awayxG ? '1X' : 'X2'} (${match.homexG >= match.awayxG ? match.homeTeam : match.awayTeam} ชนะ/เสมอ)`;
                 const x2Odds = mkt?.x2Odds ?? match.x2EstimatedOdds ?? 1.137;
@@ -1065,6 +1089,51 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
 
               {/* MODE 1 (DEFAULT PRIMARY): 1xBET ASIAN HANDICAP + OVER SCORE WITH >98% CONSENSUS FILTER */}
               {activeTipStrategyMode === 'HDP_OVER' && (() => {
+                if (isNeedsLiveSync) {
+                  return (
+                    <div className="rounded-2xl border-2 border-amber-500/80 bg-gradient-to-br from-amber-950/55 via-slate-950 to-slate-950 p-6 shadow-2xl relative overflow-hidden space-y-4 animate-in fade-in">
+                      <div className="absolute top-0 right-0 px-3.5 py-1 bg-amber-400 text-slate-950 text-[10px] font-black tracking-wider uppercase rounded-bl-xl shadow-md">
+                        🔄 NEEDS LIVE SYNC · รอดึงโปรแกรมจริงประจำวัน
+                      </div>
+
+                      <div className="pt-2 space-y-2">
+                        <span className="text-xs font-black text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                          <AlertCircle className="w-4 h-4 text-amber-400" />
+                          <span>ยังไม่มีข้อมูลโปรแกรมจริงที่ยืนยันสำหรับวันนี้ (ระบบ 100% Real Fixtures Only)</span>
+                        </span>
+                        <div className="text-lg sm:text-xl font-black text-white leading-snug">
+                          ระบบตัดรอบ 06:00 น. เข้าสู่วันใหม่แล้ว แต่ยังไม่มีคู่แข่งจริงในฐานข้อมูล — จึงงดแสดงราคาต่อ/ค่าน้ำปลอม
+                        </div>
+                        <p className="text-xs text-slate-300 leading-relaxed">
+                          เพื่อป้องกันโพยมั่วหรือนำคู่ที่ไม่มีแข่งจริงมาออกโพย กรุณากดค้นหาตารางแข่งจริงสดด้วย AI หรือเพิ่มคู่ที่คุณดูอยู่บนแอป 1xBet เข้ามาวิเคราะห์ได้เลย
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={onSyncRealSchedule}
+                          disabled={isSyncingReal}
+                          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-cyan-400 hover:from-amber-300 hover:to-cyan-300 text-slate-950 font-black text-xs transition-all cursor-pointer flex items-center gap-2 shadow-lg disabled:opacity-50"
+                        >
+                          <Globe2 className={`w-4 h-4 ${isSyncingReal ? 'animate-spin' : ''}`} />
+                          <span>{isSyncingReal ? 'กำลังค้นหาตารางจริง AI...' : '⚡ ค้นหาตารางจริงสด AI'}</span>
+                        </button>
+                        {onAddCustomMatch && (
+                          <button
+                            type="button"
+                            onClick={() => setIsCustomModalOpen(true)}
+                            className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5"
+                          >
+                            <Plus className="w-4 h-4 text-cyan-400" />
+                            <span>เพิ่มคู่จริงจากแอป 1xBet เอง</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
                 const mkt = tip?.marketRecommendations;
                 const hdpPick = mkt?.handicapPick || tip?.safeBankerPick?.team || `${match.homexG >= match.awayxG ? match.homeTeam : match.awayTeam} ต่อ -0.75 (1xBet HDP)`;
                 const hdpLine = mkt?.handicapLine || match.hdpLine1xBet || '-0.75';
@@ -1378,6 +1447,7 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
               </div>
 
               {/* TRIPLE-LAYER FAILURE PREVENTION SHIELD */}
+              {!isNeedsLiveSync && (
               <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border-2 border-cyan-500/40 space-y-3.5 shadow-xl">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2.5 flex-wrap gap-2">
                   <div className="flex items-center gap-2">
@@ -1440,6 +1510,7 @@ export const AccumulatorSlip: React.FC<AccumulatorSlipProps> = ({
                   </div>
                 </div>
               </div>
+              )}
             </div>
           </div>
 
