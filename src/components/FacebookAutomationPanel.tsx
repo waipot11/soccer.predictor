@@ -32,7 +32,9 @@ import {
   Smartphone,
   Webhook,
   Database,
-  HardDrive
+  HardDrive,
+  AlertTriangle,
+  Stethoscope
 } from 'lucide-react';
 import {
   AccumulatorTicket,
@@ -40,7 +42,8 @@ import {
   PostLog,
   CorrectScoreTip,
   TelegramNotificationConfig,
-  TelegramNotificationLog
+  TelegramNotificationLog,
+  TelegramDiagnostics
 } from '../types';
 
 interface FacebookAutomationPanelProps {
@@ -101,11 +104,13 @@ export const FacebookAutomationPanel: React.FC<FacebookAutomationPanelProps> = (
     totalMonthlyBacktestMatches: number;
   } | null>(null);
 
-  // Telegram Bot 06:30 AM Thai Time Golden X2 Notification state
+  // Telegram Bot 06:30 AM Thai Time Golden HDP Notification state
   const [telegramConfig, setTelegramConfig] = useState<TelegramNotificationConfig | null>(null);
   const [telegramLogs, setTelegramLogs] = useState<TelegramNotificationLog[]>([]);
+  const [telegramDiagnostics, setTelegramDiagnostics] = useState<TelegramDiagnostics | null>(null);
   const [telegramPreview, setTelegramPreview] = useState<string>('');
   const [telegramEnabled, setTelegramEnabled] = useState<boolean>(true);
+  const [telegramSendTimeThai, setTelegramSendTimeThai] = useState<string>('06:30');
   const [telegramBotToken, setTelegramBotToken] = useState<string>('');
   const [telegramChatId, setTelegramChatId] = useState<string>('');
   const [telegramWebhookUrl, setTelegramWebhookUrl] = useState<string>('');
@@ -113,6 +118,8 @@ export const FacebookAutomationPanel: React.FC<FacebookAutomationPanelProps> = (
   const [isSavingTelegram, setIsSavingTelegram] = useState<boolean>(false);
   const [isSendingTelegram, setIsSendingTelegram] = useState<boolean>(false);
   const [isSimulating0630, setIsSimulating0630] = useState<boolean>(false);
+  const [isDiagnosingTelegram, setIsDiagnosingTelegram] = useState<boolean>(false);
+  const [diagnoseBotDetail, setDiagnoseBotDetail] = useState<string | null>(null);
   const [telegramBannerMsg, setTelegramBannerMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [telegramPreviewCopied, setTelegramPreviewCopied] = useState<boolean>(false);
 
@@ -125,8 +132,10 @@ export const FacebookAutomationPanel: React.FC<FacebookAutomationPanelProps> = (
       if (data.success && data.config) {
         setTelegramConfig(data.config);
         setTelegramLogs(data.logs || []);
+        if (data.diagnostics) setTelegramDiagnostics(data.diagnostics);
         setTelegramPreview(data.messagePreview || '');
         setTelegramEnabled(Boolean(data.config.isEnabled));
+        setTelegramSendTimeThai(data.config.sendTimeThai || '06:30');
         setTelegramBotToken(data.config.botToken || '');
         setTelegramChatId(data.config.chatId || '');
         setTelegramWebhookUrl(data.config.customWebhookUrl || '');
@@ -143,6 +152,7 @@ export const FacebookAutomationPanel: React.FC<FacebookAutomationPanelProps> = (
       const data = await res.json();
       if (data.success) {
         setRenderStatus(data);
+        if (data.telegramDiagnostics) setTelegramDiagnostics(data.telegramDiagnostics);
       }
     } catch (err) {
       console.error('Error fetching Render status:', err);
@@ -156,7 +166,7 @@ export const FacebookAutomationPanel: React.FC<FacebookAutomationPanelProps> = (
 
   const showTelegramAlert = (text: string, type: 'success' | 'error' = 'success') => {
     setTelegramBannerMsg({ text, type });
-    setTimeout(() => setTelegramBannerMsg(null), 5000);
+    setTimeout(() => setTelegramBannerMsg(null), 6000);
   };
 
   const handleSaveTelegramConfig = async () => {
@@ -167,7 +177,7 @@ export const FacebookAutomationPanel: React.FC<FacebookAutomationPanelProps> = (
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           isEnabled: telegramEnabled,
-          sendTimeThai: '06:30',
+          sendTimeThai: telegramSendTimeThai || '06:30',
           botToken: telegramBotToken,
           chatId: telegramChatId,
           customWebhookUrl: telegramWebhookUrl,
@@ -177,9 +187,11 @@ export const FacebookAutomationPanel: React.FC<FacebookAutomationPanelProps> = (
       const data = await res.json();
       if (data.success) {
         setTelegramConfig(data.config);
+        if (data.logs) setTelegramLogs(data.logs);
+        if (data.diagnostics) setTelegramDiagnostics(data.diagnostics);
         if (data.messagePreview) setTelegramPreview(data.messagePreview);
         await fetchRenderStatus();
-        showTelegramAlert(data.message || 'บันทึกการตั้งค่า Telegram 06:30 น. และบันทึกลง Render Data เรียบร้อย');
+        showTelegramAlert(data.message || 'บันทึกการตั้งค่า Telegram เรียบร้อย');
       } else {
         showTelegramAlert('ไม่สามารถบันทึกการตั้งค่า Telegram ได้', 'error');
       }
@@ -191,6 +203,52 @@ export const FacebookAutomationPanel: React.FC<FacebookAutomationPanelProps> = (
     }
   };
 
+  const handleDiagnoseTelegram = async () => {
+    try {
+      setIsDiagnosingTelegram(true);
+      setDiagnoseBotDetail(null);
+      const res = await fetch('/api/telegram/diagnose', { method: 'POST' });
+      const data = await res.json();
+      if (data.diagnostics) setTelegramDiagnostics(data.diagnostics);
+      if (data.logs) setTelegramLogs(data.logs);
+      if (data.config) setTelegramConfig(data.config);
+      await fetchRenderStatus();
+
+      const parts: string[] = [];
+      if (data.botInfo) {
+        parts.push(
+          data.botInfo.ok
+            ? `✅ Bot Token ถูกต้อง (@${data.botInfo.username})`
+            : `❌ Bot Token ผิดพลาด: ${data.botInfo.error}`
+        );
+      } else {
+        parts.push('❌ ยังไม่มี Bot Token ในระบบ');
+      }
+      if (data.chatInfo) {
+        parts.push(
+          data.chatInfo.ok
+            ? `✅ Chat ID เข้าถึงได้ (${data.chatInfo.title || data.chatInfo.type})`
+            : `❌ Chat ID มีปัญหา: ${data.chatInfo.error}`
+        );
+      } else if (data.botInfo?.ok) {
+        parts.push('❌ ยังไม่มี Chat ID');
+      }
+      if (data.catchUp?.sentReal) {
+        parts.push('✈️ สั่งส่งโพยรอบวันนี้เข้า Telegram จริงเรียบร้อย!');
+      }
+      setDiagnoseBotDetail(parts.join(' · '));
+      showTelegramAlert(
+        data.diagnostics?.reasonThai || parts.join(' | '),
+        data.diagnostics?.isSentTodayReal || data.botInfo?.ok ? 'success' : 'error'
+      );
+    } catch (err) {
+      console.error(err);
+      showTelegramAlert('เกิดข้อผิดพลาดระหว่างตรวจสอบการเชื่อมต่อ Telegram', 'error');
+    } finally {
+      setIsDiagnosingTelegram(false);
+    }
+  };
+
   const handleSendTelegramNow = async () => {
     try {
       setIsSendingTelegram(true);
@@ -198,8 +256,9 @@ export const FacebookAutomationPanel: React.FC<FacebookAutomationPanelProps> = (
       const data = await res.json();
       if (data.logs) setTelegramLogs(data.logs);
       if (data.config) setTelegramConfig(data.config);
+      if (data.diagnostics) setTelegramDiagnostics(data.diagnostics);
       await fetchRenderStatus();
-      showTelegramAlert(data.message || 'ส่งโพยเด็ด X2 เข้า Telegram เรียบร้อย!', data.success ? 'success' : 'error');
+      showTelegramAlert(data.message || 'ส่งโพยเข้า Telegram เรียบร้อย!', data.success ? 'success' : 'error');
     } catch (err) {
       console.error(err);
       showTelegramAlert('เกิดข้อผิดพลาดในการส่งข้อความเข้า Telegram', 'error');
@@ -215,11 +274,12 @@ export const FacebookAutomationPanel: React.FC<FacebookAutomationPanelProps> = (
       const data = await res.json();
       if (data.logs) setTelegramLogs(data.logs);
       if (data.config) setTelegramConfig(data.config);
+      if (data.diagnostics) setTelegramDiagnostics(data.diagnostics);
       await fetchRenderStatus();
-      showTelegramAlert(data.message || 'จำลองรอบ Telegram 06:30 น. สำเร็จ!', data.success ? 'success' : 'error');
+      showTelegramAlert(data.message || 'ทดสอบรอบ Telegram สำเร็จ!', data.success ? 'success' : 'error');
     } catch (err) {
       console.error(err);
-      showTelegramAlert('เกิดข้อผิดพลาดในการจำลองรอบ 06:30 น.', 'error');
+      showTelegramAlert('เกิดข้อผิดพลาดในการทดสอบรอบแจ้งเตือน', 'error');
     } finally {
       setIsSimulating0630(false);
     }
@@ -421,12 +481,20 @@ ${config.hashtags.join(' ')}`;
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <button
+              onClick={handleDiagnoseTelegram}
+              disabled={isDiagnosingTelegram}
+              className="text-xs px-3 py-2 rounded-lg bg-amber-500/15 border border-amber-400/50 text-amber-200 hover:bg-amber-500/25 font-semibold transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <Stethoscope className={`w-3.5 h-3.5 ${isDiagnosingTelegram ? 'animate-spin' : ''}`} />
+              <span>{isDiagnosingTelegram ? 'กำลังตรวจเช็ค Bot...' : '🔍 ตรวจสาเหตุ & เช็ค Bot จริง'}</span>
+            </button>
+            <button
               onClick={handleSimulate0630Telegram}
               disabled={isSimulating0630}
               className="text-xs px-3 py-2 rounded-lg bg-slate-950 border border-sky-500/40 text-sky-300 hover:bg-sky-500/10 font-semibold transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
             >
               <Clock className={`w-3.5 h-3.5 ${isSimulating0630 ? 'animate-spin' : ''}`} />
-              <span>{isSimulating0630 ? 'กำลังจำลองรอบ 06:30...' : '⏰ จำลองรอบ 06:30 น.'}</span>
+              <span>{isSimulating0630 ? 'กำลังทดสอบรอบ...' : '⏰ ทดสอบรอบแจ้งเตือน'}</span>
             </button>
             <button
               onClick={handleSendTelegramNow}
@@ -434,10 +502,61 @@ ${config.hashtags.join(' ')}`;
               className="text-xs px-4 py-2 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold transition-all shadow-md shadow-sky-500/20 cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
             >
               <Send className={`w-3.5 h-3.5 ${isSendingTelegram ? 'animate-spin' : ''}`} />
-              <span>{isSendingTelegram ? 'กำลังส่งเข้า Telegram...' : '✈️ ส่งโพย X2 เข้า Telegram ทันที'}</span>
+              <span>{isSendingTelegram ? 'กำลังส่งเข้า Telegram...' : '✈️ ส่งโพยเข้า Telegram ทันที'}</span>
             </button>
           </div>
         </div>
+
+        {/* Honest Root-Cause Diagnostic Card */}
+        {telegramDiagnostics && (
+          <div
+            className={`p-4 rounded-xl border text-xs space-y-2 ${
+              telegramDiagnostics.isSentTodayReal
+                ? 'bg-emerald-950/35 border-emerald-500/40 text-emerald-100'
+                : 'bg-rose-950/40 border-rose-500/50 text-rose-100'
+            }`}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="font-bold flex items-center gap-2">
+                {telegramDiagnostics.isSentTodayReal ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                )}
+                <span>
+                  สถานะการแจ้งเตือนวันนี้: {telegramDiagnostics.isSentTodayReal ? 'ส่งเข้า Telegram จริงแล้ว ✅' : `ยังไม่ได้ส่งจริง (${telegramDiagnostics.code})`}
+                </span>
+              </div>
+              <div className="text-[11px] font-mono text-slate-300">
+                เวลาไทยตอนนี้ {telegramDiagnostics.currentTimeThai} · ตั้งส่ง {telegramDiagnostics.scheduledTimeThai}
+              </div>
+            </div>
+            <div className="text-slate-200">{telegramDiagnostics.reasonThai}</div>
+            {diagnoseBotDetail && (
+              <div className="p-2 rounded bg-slate-950/80 border border-slate-700 font-mono text-[11px] text-sky-300">
+                {diagnoseBotDetail}
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2 pt-1 text-[10px] font-mono">
+              <span className={`px-2 py-0.5 rounded border ${telegramDiagnostics.hasBotToken ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300' : 'bg-rose-500/20 border-rose-500/40 text-rose-300'}`}>
+                Bot Token: {telegramDiagnostics.hasBotToken ? 'มีค่าแล้ว' : 'ไม่มีค่า!'}
+              </span>
+              <span className={`px-2 py-0.5 rounded border ${telegramDiagnostics.hasChatId ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300' : 'bg-rose-500/20 border-rose-500/40 text-rose-300'}`}>
+                Chat ID: {telegramDiagnostics.hasChatId ? 'มีค่าแล้ว' : 'ไม่มีค่า!'}
+              </span>
+              <span className={`px-2 py-0.5 rounded border ${telegramDiagnostics.credentialsSource === 'RENDER_ENV' ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300' : 'bg-amber-500/15 border-amber-500/40 text-amber-200'}`}>
+                แหล่งเก็บ Token: {telegramDiagnostics.credentialsSource === 'RENDER_ENV' ? 'Render ENV (ถาวร)' : telegramDiagnostics.credentialsSource === 'LOCAL_FILE_STATE' ? 'ไฟล์ state (เสี่ยงหายบน Render /tmp)' : 'ยังไม่ตั้งค่า'}
+              </span>
+            </div>
+            {telegramDiagnostics.actionStepsThai.length > 0 && (
+              <ul className="list-disc list-inside text-[11px] text-amber-200/95 space-y-0.5 pt-1">
+                {telegramDiagnostics.actionStepsThai.map((step, i) => (
+                  <li key={i}>{step}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         {telegramBannerMsg && (
           <div
@@ -515,18 +634,18 @@ ${config.hashtags.join(' ')}`;
                 <div>
                   <label className="block text-slate-300 font-medium mb-1">เวลาส่งประจำวัน (เวลาไทย):</label>
                   <input
-                    type="text"
-                    value={telegramConfig?.sendTimeThai || '06:30'}
-                    readOnly
-                    className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sky-300 font-mono font-bold"
+                    type="time"
+                    value={telegramSendTimeThai}
+                    onChange={(e) => setTelegramSendTimeThai(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sky-300 font-mono font-bold focus:outline-none focus:border-sky-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-medium mb-1">สถานะรอบส่งล่าสุด:</label>
+                  <label className="block text-slate-300 font-medium mb-1">สถานะส่งจริงล่าสุด:</label>
                   <div className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-300 truncate">
                     {telegramConfig?.lastSentDateKey
-                      ? `ส่งแล้ววันที่ ${telegramConfig.lastSentDateKey}`
-                      : 'ยังไม่ได้ส่งรอบวันอัตโนมัติ'}
+                      ? `ส่งจริงแล้ว (${telegramConfig.lastSentDateKey})`
+                      : 'ยังไม่ได้ส่งจริงวันนี้'}
                   </div>
                 </div>
               </div>
@@ -574,7 +693,7 @@ ${config.hashtags.join(' ')}`;
                   onChange={(e) => setTelegramIncludeMarket(e.target.checked)}
                   className="rounded bg-slate-800 border-slate-700 text-sky-500 w-4 h-4"
                 />
-                <span className="text-slate-300">แนบแนวทาง X2 / Handicap / Over Score และสรุปสถิติ 1 เดือนในข้อความ Telegram</span>
+                <span className="text-slate-300">แนบแนวทาง HDP / Over Score / X2 และสรุปสถิติ 1 เดือนในข้อความ Telegram</span>
               </label>
 
               <button
@@ -583,7 +702,7 @@ ${config.hashtags.join(' ')}`;
                 className="w-full py-2 px-4 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
                 <Save className="w-3.5 h-3.5" />
-                <span>{isSavingTelegram ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า Telegram 06:30 น.'}</span>
+                <span>{isSavingTelegram ? 'กำลังบันทึก...' : `บันทึกการตั้งค่า Telegram รอบ ${telegramSendTimeThai} น.`}</span>
               </button>
             </div>
 
@@ -594,7 +713,11 @@ ${config.hashtags.join(' ')}`;
                   <History className="w-3.5 h-3.5 text-sky-400" />
                   <span>ประวัติการส่งแจ้งเตือน Telegram ({telegramLogs.length} รายการ)</span>
                 </span>
-                <span className="text-[10px] text-slate-400">จัดเก็บถาวรบน Render Data Disk</span>
+                <span className="text-[10px] text-amber-300">
+                  {telegramDiagnostics?.isEphemeralDataDir
+                    ? '⚠️ /tmp ชั่วคราว (ตั้ง Render ENV เพื่อไม่ให้หาย)'
+                    : 'บันทึกลง Data Directory'}
+                </span>
               </div>
 
               <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
@@ -666,7 +789,10 @@ ${config.hashtags.join(' ')}`;
                 )}
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                พร้อมไฟล์ <code className="text-purple-300 bg-slate-950 px-1 rounded">render.yaml</code> + ระบบบันทึกสถานะบอท Telegram 06:30 น. และ Facebook ลง Disk (<code className="text-sky-300 bg-slate-950 px-1 rounded">{renderStatus?.dataDir || '/tmp/kickai-data'}</code>) ไม่หายเมื่อรีสตาร์ท
+                {renderStatus?.dataDir?.startsWith('/tmp')
+                  ? <>⚠️ Render Free ใช้ <code className="text-amber-300 bg-slate-950 px-1 rounded">{renderStatus.dataDir}</code> ซึ่งถูกล้างเมื่อเซิร์ฟเวอร์หลับ/รีสตาร์ท — กรุณาตั้ง <code className="text-emerald-300">TELEGRAM_BOT_TOKEN</code> &amp; <code className="text-emerald-300">TELEGRAM_CHAT_ID</code> ใน Render ENV และใช้ UptimeRobot ปิง <code className="text-sky-300">/api/health</code> ทุก 5 นาที</>
+                  : <>ไฟล์ <code className="text-purple-300 bg-slate-950 px-1 rounded">render.yaml</code> + เก็บสถานะที่ <code className="text-sky-300 bg-slate-950 px-1 rounded">{renderStatus?.dataDir || '/tmp/kickai-data'}</code></>
+                }
               </p>
             </div>
           </div>

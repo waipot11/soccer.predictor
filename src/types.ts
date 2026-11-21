@@ -338,6 +338,24 @@ export interface PostLog {
 
 // --- TELEGRAM BOT 06:30 AM THAI TIME DAILY NOTIFICATION TYPES ---
 
+export interface TelegramDiagnostics {
+  code: 'SENT_TODAY' | 'WAITING' | 'MISSING_CREDENTIALS' | 'NEEDS_LIVE_SYNC' | 'TELEGRAM_API_ERROR' | 'DISABLED';
+  isSentTodayReal: boolean;
+  hasBotToken: boolean;
+  hasChatId: boolean;
+  hasWebhook: boolean;
+  credentialsSource: 'RENDER_ENV' | 'LOCAL_FILE_STATE' | 'NONE';
+  isEphemeralDataDir: boolean;
+  isPastScheduledTimeThai: boolean;
+  currentTimeThai: string;
+  scheduledTimeThai: string;
+  lastSentAt?: string;
+  lastSentDateKey?: string;
+  lastErrorDetail?: string;
+  reasonThai: string;
+  actionStepsThai: string[];
+}
+
 export interface TelegramNotificationConfig {
   isEnabled: boolean;
   sendTimeThai: string; // "06:30"
@@ -347,6 +365,10 @@ export interface TelegramNotificationConfig {
   includeMarketComparison: boolean;
   lastSentDateKey: string;
   lastSentAt?: string;
+  lastRealSentDateKey?: string;
+  lastSimulatedDateKey?: string;
+  lastBlockedReason?: string;
+  lastErrorDetail?: string;
 }
 
 export interface TelegramNotificationLog {

@@ -373,6 +373,11 @@ interface TelegramNotificationConfig {
   includeMarketComparison: boolean;
   lastSentDateKey: string;
   lastSentAt?: string;
+  lastRealSentDateKey?: string;
+  lastSimulatedDateKey?: string;
+  lastBlockedAlertDateKey?: string;
+  lastBlockedReason?: string;
+  lastErrorDetail?: string;
 }
 
 interface TelegramNotificationLog {
@@ -395,6 +400,11 @@ let telegramConfig: TelegramNotificationConfig = {
   customWebhookUrl: process.env.TELEGRAM_WEBHOOK_URL || '',
   includeMarketComparison: true,
   lastSentDateKey: '',
+  lastRealSentDateKey: '',
+  lastSimulatedDateKey: '',
+  lastBlockedAlertDateKey: '',
+  lastBlockedReason: '',
+  lastErrorDetail: '',
 };
 
 let telegramLogs: TelegramNotificationLog[] = [];
@@ -408,16 +418,30 @@ function loadPersistedState(): void {
     if (fs.existsSync(STATE_FILE_PATH)) {
       const raw = fs.readFileSync(STATE_FILE_PATH, 'utf-8');
       const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed.telegramLogs)) {
+        telegramLogs = parsed.telegramLogs.slice(0, 30);
+      }
       if (parsed.telegramConfig) {
+        const mergedBotToken = process.env.TELEGRAM_BOT_TOKEN || parsed.telegramConfig.botToken || '';
+        const mergedChatId = process.env.TELEGRAM_CHAT_ID || parsed.telegramConfig.chatId || '';
+        const mergedWebhook = process.env.TELEGRAM_WEBHOOK_URL || parsed.telegramConfig.customWebhookUrl || '';
+
+        // Prevent historical bug where SIMULATED/FAILED poisoned lastSentDateKey
+        const rawLastSent = parsed.telegramConfig.lastRealSentDateKey || parsed.telegramConfig.lastSentDateKey || '';
+        const hasRealSuccessForLastSent = rawLastSent
+          ? telegramLogs.some((l) => l.dateKey === rawLastSent && l.status === 'SUCCESS')
+          : false;
+
         telegramConfig = {
           ...telegramConfig,
           ...parsed.telegramConfig,
-          botToken: process.env.TELEGRAM_BOT_TOKEN || parsed.telegramConfig.botToken || '',
-          chatId: process.env.TELEGRAM_CHAT_ID || parsed.telegramConfig.chatId || '',
+          botToken: mergedBotToken,
+          chatId: mergedChatId,
+          customWebhookUrl: mergedWebhook,
+          lastSentDateKey: hasRealSuccessForLastSent ? rawLastSent : '',
+          lastRealSentDateKey: hasRealSuccessForLastSent ? rawLastSent : '',
+          lastSentAt: hasRealSuccessForLastSent ? parsed.telegramConfig.lastSentAt : undefined,
         };
-      }
-      if (Array.isArray(parsed.telegramLogs)) {
-        telegramLogs = parsed.telegramLogs.slice(0, 30);
       }
       if (parsed.facebookConfig) {
         facebookConfig = { ...facebookConfig, ...parsed.facebookConfig };
@@ -1724,13 +1748,25 @@ async function groundMatchesForDateViaGemini(thaiInfo: ThaiDateInfo): Promise<Ma
   ]
 }`;
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-4-hydrogen',
-    contents: prompt,
-    config: {
-      tools: [{ googleSearch: {} }],
-    },
-  });
+  let response: any;
+  try {
+    response = await ai.models.generateContent({
+      model: 'gemini-4-hydrogen',
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+      },
+    });
+  } catch (primaryErr) {
+    console.warn('[Gemini Grounding] Primary model failed, falling back to gemini-2.5-flash:', primaryErr);
+    response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+      },
+    });
+  }
 
   const aiText = response.text || '';
   const jsonMatch = aiText.match(/```json\s*([\s\S]*?)\s*```/) || aiText.match(/\{[\s\S]*"matches"[\s\S]*\}/);
@@ -2849,6 +2885,157 @@ function formatTelegramGoldenMatchMessage(tip: CorrectScoreTip): string {
   return lines.join('\n');
 }
 
+function parseSendTimeThai(sendTimeStr?: string): { hour: number; minute: number; normalized: string } {
+  const match = String(sendTimeStr || '06:30').trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return { hour: 6, minute: 30, normalized: '06:30' };
+  const hour = Math.max(0, Math.min(23, Number(match[1])));
+  const minute = Math.max(0, Math.min(59, Number(match[2])));
+  return {
+    hour,
+    minute,
+    normalized: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
+  };
+}
+
+function getThaiTimeClock(): { hour: number; minute: number; clockStr: string } {
+  const thaiDate = new Date(Date.now() + 7 * 3600 * 1000);
+  const hour = thaiDate.getUTCHours();
+  const minute = thaiDate.getUTCMinutes();
+  return {
+    hour,
+    minute,
+    clockStr: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} น.`,
+  };
+}
+
+function hasRealTelegramCredentials(): boolean {
+  return Boolean((telegramConfig.botToken && telegramConfig.chatId) || telegramConfig.customWebhookUrl);
+}
+
+function isSentRealToday(): boolean {
+  const activeKey = currentThaiDateInfo.dateKey;
+  if (telegramConfig.lastRealSentDateKey === activeKey || telegramConfig.lastSentDateKey === activeKey) {
+    return telegramLogs.some((l) => l.dateKey === activeKey && l.status === 'SUCCESS') || telegramConfig.lastRealSentDateKey === activeKey;
+  }
+  return false;
+}
+
+function buildTelegramDiagnostics() {
+  ensureDailyCycleSynchronized(false);
+  const target = parseSendTimeThai(telegramConfig.sendTimeThai);
+  const clock = getThaiTimeClock();
+  const isPastScheduledTimeThai = clock.hour > target.hour || (clock.hour === target.hour && clock.minute >= target.minute);
+
+  const hasBotToken = Boolean(telegramConfig.botToken?.trim());
+  const hasChatId = Boolean(telegramConfig.chatId?.trim());
+  const hasWebhook = Boolean(telegramConfig.customWebhookUrl?.trim());
+  const hasCredentials = hasRealTelegramCredentials();
+  const credentialsSource: 'RENDER_ENV' | 'LOCAL_FILE_STATE' | 'NONE' =
+    process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID
+      ? 'RENDER_ENV'
+      : hasCredentials
+      ? 'LOCAL_FILE_STATE'
+      : 'NONE';
+
+  const isEphemeralDataDir = DATA_DIR.startsWith('/tmp');
+  const sentTodayReal = isSentRealToday();
+  const todayLogs = telegramLogs.filter((l) => l.dateKey === currentThaiDateInfo.dateKey);
+  const latestTodayFailed = todayLogs.find((l) => l.status === 'FAILED');
+
+  let code: 'SENT_TODAY' | 'WAITING' | 'MISSING_CREDENTIALS' | 'NEEDS_LIVE_SYNC' | 'TELEGRAM_API_ERROR' | 'DISABLED' = 'WAITING';
+  let reasonThai = '';
+  const actionStepsThai: string[] = [];
+
+  if (!telegramConfig.isEnabled) {
+    code = 'DISABLED';
+    reasonThai = 'ระบบแจ้งเตือน Telegram อัตโนมัติถูกปิดอยู่ (isEnabled = false)';
+    actionStepsThai.push('เปิดสวิตช์ "เปิดส่งอัตโนมัติ" ในหน้าตั้งค่า Telegram แล้วกดบันทึก');
+  } else if (sentTodayReal) {
+    code = 'SENT_TODAY';
+    const sentAtThai = telegramConfig.lastSentAt
+      ? new Date(telegramConfig.lastSentAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' }) + ' น.'
+      : '';
+    reasonThai = `ส่งโพยจริงเข้า Telegram ประจำวันที่ ${currentThaiDateInfo.dateKey} สำเร็จแล้ว (${sentAtThai})`;
+  } else if (currentVerificationSource === 'NEEDS_LIVE_SYNC') {
+    code = 'NEEDS_LIVE_SYNC';
+    reasonThai = 'ยังไม่พบโปรแกรมแข่งจริงที่ยืนยันสำหรับวันนี้ (NEEDS_LIVE_SYNC) จึงยังไม่ออกโพย';
+    actionStepsThai.push('กดปุ่ม "⚡ ค้นหาตารางจริงสด AI" เพื่อให้ Gemini + Google Search ดึงโปรแกรมแข่งจริงของวันนี้');
+  } else if (!hasCredentials) {
+    code = 'MISSING_CREDENTIALS';
+    reasonThai = !hasBotToken && !hasChatId
+      ? 'ยังไม่ได้ตั้งค่า Telegram Bot Token และ Chat ID (หรือค่าใน /tmp หายเมื่อเซิร์ฟเวอร์รีสตาร์ท)'
+      : !hasBotToken
+      ? 'ขาด Telegram Bot Token (TELEGRAM_BOT_TOKEN)'
+      : 'ขาด Telegram Chat ID (TELEGRAM_CHAT_ID)';
+    actionStepsThai.push('ใส่ TELEGRAM_BOT_TOKEN และ TELEGRAM_CHAT_ID ในหน้า Render Dashboard -> Environment Variables (ค่าจะไม่หายเวลา Server หลับ)');
+    actionStepsThai.push('หรือกรอกในแบบฟอร์มตั้งค่า Telegram ด้านล่างแล้วกดบันทึก + ทดสอบส่ง');
+  } else if (telegramConfig.lastBlockedReason === 'TELEGRAM_API_ERROR' || latestTodayFailed) {
+    code = 'TELEGRAM_API_ERROR';
+    const errText = telegramConfig.lastErrorDetail || latestTodayFailed?.apiResponseMsg || 'Telegram API ปฏิเสธคำขอ';
+    reasonThai = `ส่งเข้า Telegram ล้มเหลว: ${errText}`;
+    actionStepsThai.push('ตรวจสอบว่าได้กด /start ในแชทของ Bot หรือดึง Bot เข้า Group/Channel ในฐานะ Admin แล้ว');
+    actionStepsThai.push('กดปุ่ม "🔍 ตรวจสอบปัญหา & ทดสอบการเชื่อมต่อ Bot จริง" เพื่อเช็ค Token และ Chat ID');
+  } else if (!isPastScheduledTimeThai) {
+    code = 'WAITING';
+    reasonThai = `รอถึงเวลาแจ้งเตือน ${target.normalized} น. (เวลาไทยปัจจุบัน ${clock.clockStr})`;
+  } else {
+    code = 'WAITING';
+    reasonThai = `เลยเวลา ${target.normalized} น. แล้ว และกำลังเตรียมส่งแจ้งเตือนรอบวันนี้ (หรือเซิร์ฟเวอร์เพิ่งตื่นจากโหมดหลับ)`;
+    actionStepsThai.push('ตั้งค่า UptimeRobot ให้ยิง /api/health ทุก 5 นาที เพื่อไม่ให้ Render Free หลับตอน 06:30 น.');
+  }
+
+  if (isEphemeralDataDir || credentialsSource === 'LOCAL_FILE_STATE') {
+    actionStepsThai.push('สำคัญ: บน Render Free พื้นที่ /tmp จะถูกล้างเมื่อเซิร์ฟเวอร์หลับ/Deploy ใหม่ ควรตั้ง TELEGRAM_BOT_TOKEN และ TELEGRAM_CHAT_ID เป็น Environment Variables ใน Render Dashboard');
+  }
+
+  return {
+    code,
+    isSentTodayReal: sentTodayReal,
+    hasBotToken,
+    hasChatId,
+    hasWebhook,
+    credentialsSource,
+    isEphemeralDataDir,
+    isPastScheduledTimeThai,
+    currentTimeThai: clock.clockStr,
+    scheduledTimeThai: `${target.normalized} น.`,
+    lastSentAt: telegramConfig.lastSentAt,
+    lastSentDateKey: telegramConfig.lastSentDateKey,
+    lastErrorDetail: telegramConfig.lastErrorDetail || latestTodayFailed?.apiResponseMsg || '',
+    reasonThai,
+    actionStepsThai,
+  };
+}
+
+let lastAutoRetryFailedAtMs = 0;
+let telegramCheckInFlight: Promise<{ triggered: boolean; sentReal: boolean; status: string; code: string; reason: string }> | null = null;
+
+async function sendTelegramPlainWarning(messageText: string): Promise<void> {
+  if (!hasRealTelegramCredentials()) return;
+  try {
+    if (telegramConfig.botToken && telegramConfig.chatId) {
+      await fetch(`https://api.telegram.org/bot${telegramConfig.botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: telegramConfig.chatId,
+          text: messageText,
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+        }),
+      });
+    } else if (telegramConfig.customWebhookUrl) {
+      await fetch(telegramConfig.customWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event: 'TELEGRAM_SYSTEM_WARNING', message: messageText.replace(/<\/?b>/g, '') }),
+      });
+    }
+  } catch (err) {
+    console.warn('[Telegram Warning Alert Error]', err);
+  }
+}
+
 async function sendTelegramGoldenNotification(
   triggerType: 'DAILY_0630_CRON' | 'MANUAL_TEST' | 'UPTIMEROBOT_CRON'
 ): Promise<{ ok: boolean; log: TelegramNotificationLog }> {
@@ -2919,59 +3106,159 @@ async function sendTelegramGoldenNotification(
   telegramLogs.unshift(logEntry);
   if (telegramLogs.length > 30) telegramLogs = telegramLogs.slice(0, 30);
 
-  if (status !== 'FAILED') {
+  // CRITICAL FIX: Only mark lastSentDateKey / lastRealSentDateKey on actual SUCCESS!
+  // Never let SIMULATED or FAILED lock out real deliveries for the rest of the day.
+  if (status === 'SUCCESS') {
     telegramConfig.lastSentDateKey = currentThaiDateInfo.dateKey;
+    telegramConfig.lastRealSentDateKey = currentThaiDateInfo.dateKey;
     telegramConfig.lastSentAt = new Date().toISOString();
+    telegramConfig.lastBlockedReason = '';
+    telegramConfig.lastErrorDetail = '';
+  } else if (status === 'SIMULATED') {
+    telegramConfig.lastSimulatedDateKey = currentThaiDateInfo.dateKey;
+    telegramConfig.lastBlockedReason = 'MISSING_CREDENTIALS';
+  } else if (status === 'FAILED') {
+    telegramConfig.lastBlockedReason = 'TELEGRAM_API_ERROR';
+    telegramConfig.lastErrorDetail = apiResponseMsg;
+    lastAutoRetryFailedAtMs = Date.now();
   }
   savePersistedState();
 
-  return { ok: status !== 'FAILED', log: logEntry };
+  return { ok: status === 'SUCCESS', log: logEntry };
 }
 
-function checkAndTriggerDaily0630Telegram(source: string = 'INTERVAL'): {
+async function checkAndTriggerDaily0630Telegram(
+  source: string = 'INTERVAL'
+): Promise<{
   triggered: boolean;
+  sentReal: boolean;
+  status: string;
+  code: string;
   reason: string;
-} {
-  if (!telegramConfig.isEnabled) {
-    return { triggered: false, reason: 'Telegram 06:30 Auto-Notification is disabled' };
+}> {
+  if (telegramCheckInFlight) {
+    return telegramCheckInFlight;
   }
 
-  ensureDailyCycleSynchronized(false);
+  telegramCheckInFlight = (async () => {
+    try {
+      if (!telegramConfig.isEnabled) {
+        return {
+          triggered: false,
+          sentReal: false,
+          status: 'DISABLED',
+          code: 'DISABLED',
+          reason: 'ระบบแจ้งเตือน Telegram อัตโนมัติถูกปิดอยู่',
+        };
+      }
 
-  const nowMs = Date.now();
-  const thaiDate = new Date(nowMs + 7 * 3600 * 1000);
-  const thaiHour = thaiDate.getUTCHours();
-  const thaiMin = thaiDate.getUTCMinutes();
+      ensureDailyCycleSynchronized(false);
 
-  const isAfter0630 = thaiHour > 6 || (thaiHour === 6 && thaiMin >= 30);
-  if (!isAfter0630) {
-    return { triggered: false, reason: `ยังไม่ถึงเวลา 06:30 น. (เวลาไทยปัจจุบัน ${String(thaiHour).padStart(2, '0')}:${String(thaiMin).padStart(2, '0')} น.)` };
-  }
+      const target = parseSendTimeThai(telegramConfig.sendTimeThai);
+      const clock = getThaiTimeClock();
+      const isAfterScheduledTime = clock.hour > target.hour || (clock.hour === target.hour && clock.minute >= target.minute);
 
-  if (telegramConfig.lastSentDateKey === currentThaiDateInfo.dateKey) {
-    return { triggered: false, reason: `ส่ง Telegram ประจำวันที่ ${currentThaiDateInfo.dateKey} เรียบร้อยแล้ว` };
-  }
+      if (!isAfterScheduledTime) {
+        return {
+          triggered: false,
+          sentReal: false,
+          status: 'WAITING',
+          code: 'BEFORE_SCHEDULED_TIME',
+          reason: `ยังไม่ถึงเวลา ${target.normalized} น. (เวลาไทยปัจจุบัน ${clock.clockStr})`,
+        };
+      }
 
-  if (currentVerificationSource === 'NEEDS_LIVE_SYNC') {
-    return { triggered: false, reason: 'ยังไม่พบโปรแกรมแข่งจริงของวันนี้ จึงระงับการส่ง Telegram ชั่วคราวเพื่อป้องกันโพยมั่ว' };
-  }
+      if (isSentRealToday()) {
+        return {
+          triggered: false,
+          sentReal: true,
+          status: 'SENT_TODAY',
+          code: 'ALREADY_SENT',
+          reason: `ส่ง Telegram จริงประจำวันที่ ${currentThaiDateInfo.dateKey} เรียบร้อยแล้ว`,
+        };
+      }
 
-  telegramConfig.lastSentDateKey = currentThaiDateInfo.dateKey;
-  const triggerKind = source.includes('UPTIME') ? 'UPTIMEROBOT_CRON' : 'DAILY_0630_CRON';
-  sendTelegramGoldenNotification(triggerKind).catch((err) => console.error('[Telegram 06:30 Trigger Error]', err));
+      // If today has NEEDS_LIVE_SYNC, automatically attempt Gemini Google Search Grounding first!
+      if (currentVerificationSource === 'NEEDS_LIVE_SYNC') {
+        try {
+          console.log(`[Telegram Scheduler via ${source}] NEEDS_LIVE_SYNC detected for ${currentThaiDateInfo.dateKey} -> Attempting Gemini Search Grounding...`);
+          await groundMatchesForDateViaGemini(currentThaiDateInfo);
+        } catch (groundErr) {
+          console.warn('[Telegram Scheduler] Auto-grounding attempt failed:', groundErr);
+        }
+      }
 
-  return { triggered: true, reason: `สั่งส่ง Telegram Golden X2 รอบ 06:30 น. ประจำวันที่ ${currentThaiDateInfo.dateKey} แล้ว` };
+      if (currentVerificationSource === 'NEEDS_LIVE_SYNC') {
+        telegramConfig.lastBlockedReason = 'NEEDS_LIVE_SYNC';
+        if (hasRealTelegramCredentials() && telegramConfig.lastBlockedAlertDateKey !== currentThaiDateInfo.dateKey) {
+          telegramConfig.lastBlockedAlertDateKey = currentThaiDateInfo.dateKey;
+          await sendTelegramPlainWarning(
+            `⚠️ <b>[KickAI Alert · ${target.normalized} น.]</b>\nวันนี้ (${currentThaiDateInfo.fullThaiDateString}) ยังไม่พบโปรแกรมแข่งที่ยืนยันอัตโนมัติ (NEEDS_LIVE_SYNC)\nกรุณาเปิดแอปแล้วกดปุ่ม <b>⚡ ค้นหาตารางจริงสด AI</b> เพื่อให้ระบบออกโพยและส่งเข้า Telegram ทันที`
+          );
+        }
+        savePersistedState();
+        return {
+          triggered: false,
+          sentReal: false,
+          status: 'BLOCKED',
+          code: 'NEEDS_LIVE_SYNC',
+          reason: 'ยังไม่พบโปรแกรมแข่งจริงของวันนี้ แม้ลองค้นหาสดอัตโนมัติแล้ว จึงยังไม่ส่งโพยมั่ว',
+        };
+      }
+
+      if (!hasRealTelegramCredentials()) {
+        telegramConfig.lastBlockedReason = 'MISSING_CREDENTIALS';
+        if (telegramConfig.lastSimulatedDateKey !== currentThaiDateInfo.dateKey) {
+          await sendTelegramGoldenNotification(source.includes('UPTIME') ? 'UPTIMEROBOT_CRON' : 'DAILY_0630_CRON');
+        } else {
+          savePersistedState();
+        }
+        return {
+          triggered: false,
+          sentReal: false,
+          status: 'BLOCKED',
+          code: 'MISSING_CREDENTIALS',
+          reason: 'ยังไม่ได้ตั้งค่า TELEGRAM_BOT_TOKEN และ TELEGRAM_CHAT_ID จริง (ไม่บล็อกการส่งซ้ำเมื่อกรอกค่าแล้ว)',
+        };
+      }
+
+      // Backoff 2 minutes on repeated API errors
+      if (Date.now() - lastAutoRetryFailedAtMs < 120000 && telegramConfig.lastBlockedReason === 'TELEGRAM_API_ERROR') {
+        return {
+          triggered: false,
+          sentReal: false,
+          status: 'RETRY_WAIT',
+          code: 'TELEGRAM_API_ERROR',
+          reason: `เพิ่งส่งล้มเหลว (${telegramConfig.lastErrorDetail || 'API Error'}) ระบบจะลองใหม่ในอีกไม่เกิน 2 นาที`,
+        };
+      }
+
+      const triggerKind = source.includes('UPTIME') ? 'UPTIMEROBOT_CRON' : 'DAILY_0630_CRON';
+      const result = await sendTelegramGoldenNotification(triggerKind);
+      return {
+        triggered: result.ok,
+        sentReal: result.ok,
+        status: result.log.status,
+        code: result.ok ? 'SENT_TODAY' : 'TELEGRAM_API_ERROR',
+        reason: result.log.apiResponseMsg,
+      };
+    } finally {
+      telegramCheckInFlight = null;
+    }
+  })();
+
+  return telegramCheckInFlight;
 }
 
-// Format Facebook Post specifically for Super Golden X2 Consensus Slip
+// Format Facebook Post specifically for 1xBet Asian Handicap Primary + Consensus >98%
 function formatFacebookPost(tip: CorrectScoreTip): string {
   const m = tip.selectedMatch;
   const kickOffThai = new Date(m.kickOffTime).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
   const mkt = tip.marketRecommendations;
   const lines: string[] = [];
 
-  lines.push(`🌟【โพยเด็ดซูเปอร์โกลเด้นสลิป X2 (Super Golden X2 Slip)】🌟`);
-  lines.push(`🏆 เน้นตลาดที่สถิติเข้าสูงสุดอันดับ 1 ในรอบ 1 เดือน (X2 สองโอกาส Win Rate 90.0%)`);
+  lines.push(`⚖️【โพยเด็ดซูเปอร์โกลเด้นสลิป 1xBet HDP (Super Golden Slip)】🌟`);
+  lines.push(`🏆 ตัวหลัก Asian Handicap (1xBet) + Over Score · สถิติเข้า 70.4% (ROI +26.3% อันดับ 1)`);
   lines.push(`📊 ฉันทามติ 100 สถาบันสถิติสากลตรงกัน: ${tip.consensusAgreementRate}% (>98.0%)`);
   lines.push(`📅 ประจำวันที่ ${tip.date} (ตารางแข่งขันจริง Verified Match Fixture)`);
   lines.push(`⏰ โพสต์ล่วงหน้าก่อนเตะ ${facebookConfig.autoPostLeadHours} ชั่วโมง`);
@@ -2980,10 +3267,10 @@ function formatFacebookPost(tip: CorrectScoreTip): string {
   lines.push(`   🏟️ ${m.homeTeam} พบ ${m.awayTeam}`);
   lines.push(`   📍 สนาม: ${m.stadium} | เวลาเตะ: ${kickOffThai} น.`);
   lines.push(`----------------------------------------`);
-  lines.push(`🛡️ ฟันธงโพยเด็ดหลัก X2 (สองโอกาส): 【 ${mkt?.x2Pick || m.recommendedPick} 】 (@${(mkt?.x2Odds || m.decimalOdds).toFixed(2)} · โอกาสเข้า ${mkt?.x2Prob || 88.5}%)`);
-  lines.push(`⚖️ ตัวเลือกเสริม Handicap: 【 ${mkt?.handicapPick || m.recommendedPick} 】 (@${(mkt?.handicapOdds || 1.80).toFixed(2)})`);
-  lines.push(`🔥 สกอร์สูง/ต่ำ Over Score: 【 ${mkt?.overScorePick || 'Over 2.5'} 】 (@${(mkt?.overScoreOdds || 1.65).toFixed(2)})`);
-  lines.push(`🎯 สกอร์ตรงสำรอง: 【 ${tip.primaryScore} 】 (@${tip.primaryOdds.toFixed(2)})`);
+  lines.push(`⚖️ #1 ตัวหลัก 1xBet Asian Handicap: 【 ${mkt?.handicapPick || m.recommendedPick} 】 (@${(mkt?.handicapOdds || 1.82).toFixed(2)} · โอกาสเข้า ${mkt?.handicapProb || 72.5}% | Edge +${(mkt?.handicapEdgePercent || 15.0).toFixed(1)}%)`);
+  lines.push(`🔥 #2 เสริม Over Score: 【 ${mkt?.overScorePick || 'Over 2.5'} 】 (@${(mkt?.overScoreOdds || 1.65).toFixed(2)})`);
+  lines.push(`🛡️ อ้างอิง X2 บน 1xBet: 【 ${mkt?.x2Pick || m.recommendedPick} 】 (@${mkt?.x2OddsDisplay || (mkt?.x2Odds || m.decimalOdds).toFixed(2)})`);
+  lines.push(`🎯 สกอร์ตรงเสริม: 【 ${tip.primaryScore} 】 (@${tip.primaryOdds.toFixed(2)})`);
   lines.push(`----------------------------------------`);
   lines.push(`🏛️ ผลการประเมินร่วม 100 สถาบันสถิติสากล (>98.0%):`);
   m.consensusInstitutes.slice(0, 8).forEach((inst, idx) => {
@@ -3005,6 +3292,9 @@ function formatFacebookPost(tip: CorrectScoreTip): string {
 function checkAndTriggerAutoPost(source: string = 'AUTOMATIC_SCHEDULER'): { triggered: boolean; message: string; log?: PostLog } {
   if (!facebookConfig.isEnabled) {
     return { triggered: false, message: 'ระบบตั้งเวลาอัตโนมัติถูกปิดอยู่ (Facebook Auto-Scheduler Disabled)' };
+  }
+  if (currentVerificationSource === 'NEEDS_LIVE_SYNC') {
+    return { triggered: false, message: 'ยังไม่พบโปรแกรมแข่งจริงของวันนี้ จึงระงับการออโต้โพสต์ Facebook ชั่วคราว' };
   }
   if (currentCorrectScoreTip.isAutoPosted) {
     return { triggered: false, message: `ทีเด็ดชุดนี้ (${currentCorrectScoreTip.tipId}) โพสต์ Facebook เรียบร้อยแล้ว` };
@@ -3036,13 +3326,13 @@ function checkAndTriggerAutoPost(source: string = 'AUTOMATIC_SCHEDULER'): { trig
       fbPostId: mockPostId,
       leadTimeHours: facebookConfig.autoPostLeadHours,
       postContent,
-      apiResponseMsg: `[Auto-Trigger via ${source}] Published X2 Super Golden Slip 6+ hours before kickoff to Facebook Page ID ${facebookConfig.pageId}`,
+      apiResponseMsg: `[Auto-Trigger via ${source}] Published 1xBet HDP Super Golden Slip 6+ hours before kickoff to Facebook Page ID ${facebookConfig.pageId}`,
     };
 
     postLogs.unshift(newLog);
     savePersistedState();
-    console.log(`[Auto-Post Scheduler via ${source}] Successfully posted X2 Golden Tip ${currentCorrectScoreTip.tipId}`);
-    return { triggered: true, message: 'โพสต์ทีเด็ด X2 สำเร็จตามกำหนดเวลาล่วงหน้า 6 ชม.', log: newLog };
+    console.log(`[Auto-Post Scheduler via ${source}] Successfully posted Golden Tip ${currentCorrectScoreTip.tipId}`);
+    return { triggered: true, message: 'โพสต์ทีเด็ดสำเร็จตามกำหนดเวลาล่วงหน้า 6 ชม.', log: newLog };
   }
 
   const minutesRemaining = Math.max(0, Math.round((scheduledTime - now) / (1000 * 60)));
@@ -3056,15 +3346,18 @@ function checkAndTriggerAutoPost(source: string = 'AUTOMATIC_SCHEDULER'): { trig
 setInterval(() => {
   autoRolloverIfExpired();
   checkAndTriggerAutoPost('INTERNAL_INTERVAL');
-  checkAndTriggerDaily0630Telegram('INTERNAL_INTERVAL');
+  checkAndTriggerDaily0630Telegram('INTERNAL_INTERVAL').catch((err) =>
+    console.error('[Telegram Interval Error]', err)
+  );
 }, 30000);
 
 // --- REST API ENDPOINTS ---
 
-// 1. Get current Super Golden X2 Tip, Qualified Real Pool, accumulator, and 1-Month Market Comparison
-app.get('/api/football/today', (_req, res) => {
+// 1. Get current Super Golden Tip, Qualified Real Pool, accumulator, and Telegram diagnostics
+app.get('/api/football/today', async (_req, res) => {
   autoRolloverIfExpired();
-  checkAndTriggerDaily0630Telegram('API_TODAY');
+  await checkAndTriggerDaily0630Telegram('API_TODAY').catch(() => null);
+  const telegramDiagnostics = buildTelegramDiagnostics();
   res.json({
     tip: currentCorrectScoreTip,
     pool: realQualifiedPool,
@@ -3078,12 +3371,14 @@ app.get('/api/football/today', (_req, res) => {
       sendTimeThai: telegramConfig.sendTimeThai,
       lastSentDateKey: telegramConfig.lastSentDateKey,
       lastSentAt: telegramConfig.lastSentAt,
-      hasCredentials: Boolean((telegramConfig.botToken && telegramConfig.chatId) || telegramConfig.customWebhookUrl),
+      hasCredentials: hasRealTelegramCredentials(),
+      diagnostics: telegramDiagnostics,
     },
     renderHosting: {
       isRenderEnv: Boolean(process.env.RENDER || process.env.RENDER_EXTERNAL_URL),
       renderExternalUrl: process.env.RENDER_EXTERNAL_URL || '',
       dataDir: DATA_DIR,
+      isEphemeralDataDir: DATA_DIR.startsWith('/tmp'),
     },
   });
 });
@@ -3626,35 +3921,97 @@ app.post('/api/facebook/reset-status', (_req, res) => {
   res.json({ success: true, tip: currentCorrectScoreTip, accumulator: currentAccumulator });
 });
 
-// 8. Telegram Bot Daily 06:30 AM Thai Time Notification Routes
+// 8. Telegram Bot Daily Scheduled Thai Time Notification Routes
 app.get('/api/telegram/config', (_req, res) => {
   res.json({
     success: true,
     config: telegramConfig,
     logs: telegramLogs,
+    diagnostics: buildTelegramDiagnostics(),
     messagePreview: formatTelegramGoldenMatchMessage(currentCorrectScoreTip).replace(/<\/?b>/g, ''),
     currentThaiDate: currentThaiDateInfo,
   });
 });
 
-app.post('/api/telegram/config', (req, res) => {
+app.post('/api/telegram/config', async (req, res) => {
   const { isEnabled, sendTimeThai, botToken, chatId, customWebhookUrl, includeMarketComparison } = req.body || {};
+  const parsedTime = sendTimeThai !== undefined ? parseSendTimeThai(String(sendTimeThai)).normalized : telegramConfig.sendTimeThai;
+
   telegramConfig = {
     ...telegramConfig,
     isEnabled: isEnabled !== undefined ? Boolean(isEnabled) : telegramConfig.isEnabled,
-    sendTimeThai: sendTimeThai || telegramConfig.sendTimeThai || '06:30',
+    sendTimeThai: parsedTime || '06:30',
     botToken: botToken !== undefined ? String(botToken).trim() : telegramConfig.botToken,
     chatId: chatId !== undefined ? String(chatId).trim() : telegramConfig.chatId,
     customWebhookUrl: customWebhookUrl !== undefined ? String(customWebhookUrl).trim() : telegramConfig.customWebhookUrl,
     includeMarketComparison: includeMarketComparison !== undefined ? Boolean(includeMarketComparison) : telegramConfig.includeMarketComparison,
+    lastBlockedReason: '',
+    lastErrorDetail: '',
   };
   savePersistedState();
+
+  // If credentials were just saved and it's already past scheduled time without a real delivery today, catch up now!
+  const catchUp = await checkAndTriggerDaily0630Telegram('CONFIG_SAVED_CATCHUP').catch(() => null);
 
   res.json({
     success: true,
     config: telegramConfig,
+    logs: telegramLogs,
+    diagnostics: buildTelegramDiagnostics(),
+    catchUp,
     messagePreview: formatTelegramGoldenMatchMessage(currentCorrectScoreTip).replace(/<\/?b>/g, ''),
-    message: 'บันทึกการตั้งค่าแจ้งเตือนคู่โกลด์ X2 ทาง Telegram 06:30 น. สำเร็จ',
+    message: catchUp?.sentReal
+      ? `บันทึกการตั้งค่า Telegram รอบ ${telegramConfig.sendTimeThai} น. และส่งโพยรอบวันนี้เข้า Telegram จริงแล้ว!`
+      : `บันทึกการตั้งค่าแจ้งเตือน Telegram รอบ ${telegramConfig.sendTimeThai} น. สำเร็จ`,
+  });
+});
+
+app.all('/api/telegram/diagnose', async (_req, res) => {
+  ensureDailyCycleSynchronized(false);
+  const diagnosticsBefore = buildTelegramDiagnostics();
+  let botInfo: { ok: boolean; username?: string; firstName?: string; error?: string } | null = null;
+  let chatInfo: { ok: boolean; title?: string; type?: string; error?: string } | null = null;
+
+  if (telegramConfig.botToken) {
+    try {
+      const r = await fetch(`https://api.telegram.org/bot${telegramConfig.botToken}/getMe`);
+      const j: any = await r.json().catch(() => ({}));
+      if (r.ok && j.ok) {
+        botInfo = { ok: true, username: j.result?.username, firstName: j.result?.first_name };
+      } else {
+        botInfo = { ok: false, error: j.description || `HTTP ${r.status}` };
+      }
+    } catch (err: any) {
+      botInfo = { ok: false, error: err?.message || 'Network error' };
+    }
+  }
+
+  if (telegramConfig.botToken && telegramConfig.chatId) {
+    try {
+      const r = await fetch(`https://api.telegram.org/bot${telegramConfig.botToken}/getChat?chat_id=${encodeURIComponent(telegramConfig.chatId)}`);
+      const j: any = await r.json().catch(() => ({}));
+      if (r.ok && j.ok) {
+        chatInfo = { ok: true, title: j.result?.title || j.result?.username || j.result?.first_name, type: j.result?.type };
+      } else {
+        chatInfo = { ok: false, error: j.description || `HTTP ${r.status}` };
+      }
+    } catch (err: any) {
+      chatInfo = { ok: false, error: err?.message || 'Network error' };
+    }
+  }
+
+  const catchUp = await checkAndTriggerDaily0630Telegram('DIAGNOSE_CATCHUP').catch(() => null);
+  const diagnosticsAfter = buildTelegramDiagnostics();
+
+  res.json({
+    success: true,
+    diagnosticsBefore,
+    diagnostics: diagnosticsAfter,
+    botInfo,
+    chatInfo,
+    catchUp,
+    logs: telegramLogs,
+    config: telegramConfig,
   });
 });
 
@@ -3665,6 +4022,7 @@ app.post('/api/telegram/send-now', async (_req, res) => {
     log: result.log,
     config: telegramConfig,
     logs: telegramLogs,
+    diagnostics: buildTelegramDiagnostics(),
     message: result.log.apiResponseMsg,
   });
 });
@@ -3677,7 +4035,8 @@ app.post('/api/telegram/test-0630', async (_req, res) => {
     log: result.log,
     config: telegramConfig,
     logs: telegramLogs,
-    message: `จำลองรอบแจ้งเตือน Telegram 06:30 น. สำเร็จ: ${result.log.apiResponseMsg}`,
+    diagnostics: buildTelegramDiagnostics(),
+    message: `ทดสอบรอบแจ้งเตือน Telegram ${telegramConfig.sendTimeThai} น.: ${result.log.apiResponseMsg}`,
   });
 });
 
@@ -3693,11 +4052,13 @@ app.get('/api/render/status', (_req, res) => {
     port: PORT,
     nodeEnv: process.env.NODE_ENV || 'development',
     dataDir: DATA_DIR,
+    isEphemeralDataDir: DATA_DIR.startsWith('/tmp'),
     stateFileExists: fs.existsSync(STATE_FILE_PATH),
     uptimeSeconds: Math.floor(process.uptime()),
     healthCheckPath: '/api/health',
     activeDateKey: currentThaiDateInfo.dateKey,
     totalMonthlyBacktestMatches: monthlyComparisonCache.totalMatchesEvaluated,
+    telegramDiagnostics: buildTelegramDiagnostics(),
   });
 });
 
@@ -3998,11 +4359,12 @@ app.post('/api/football/reset-win-stats', (_req, res) => {
 });
 
 // 14. 24/7 Keep-Alive & Health Check Endpoint (Optimized for Render.com + UptimeRobot)
-app.all(['/api/health', '/api/cron', '/api/cron-check'], (req, res) => {
+app.all(['/api/health', '/api/cron', '/api/cron-check'], async (req, res) => {
   ensureDailyCycleSynchronized(false);
   const triggerSource = req.query.source ? String(req.query.source) : 'UPTIMEROBOT_PING';
   const cronEvaluation = checkAndTriggerAutoPost(triggerSource);
-  const telegramEvaluation = checkAndTriggerDaily0630Telegram(triggerSource);
+  const telegramEvaluation = await checkAndTriggerDaily0630Telegram(triggerSource);
+  const telegramDiagnostics = buildTelegramDiagnostics();
 
   res.json({
     status: 'ONLINE',
@@ -4012,6 +4374,7 @@ app.all(['/api/health', '/api/cron', '/api/cron-check'], (req, res) => {
     schedulerActive: facebookConfig.isEnabled,
     telegram0630SchedulerActive: telegramConfig.isEnabled,
     telegramEvaluation,
+    telegramDiagnostics,
     ticketId: currentAccumulator.ticketId,
     autoPostLeadHours: facebookConfig.autoPostLeadHours,
     nextScheduledPost: currentAccumulator.autoPostScheduledTime,
@@ -4022,6 +4385,7 @@ app.all(['/api/health', '/api/cron', '/api/cron-check'], (req, res) => {
       isRenderEnv: Boolean(process.env.RENDER || process.env.RENDER_EXTERNAL_URL),
       renderExternalUrl: process.env.RENDER_EXTERNAL_URL || '',
       dataDir: DATA_DIR,
+      isEphemeralDataDir: DATA_DIR.startsWith('/tmp'),
       stateFileExists: fs.existsSync(STATE_FILE_PATH),
     },
     platforms: {
@@ -4029,11 +4393,13 @@ app.all(['/api/health', '/api/cron', '/api/cron-check'], (req, res) => {
       uptimeRobotSupported: true,
       cloudRunZeroDollarSupported: true,
     },
-    message: 'KickAI 24/7 Render.com Background Worker is alive (06:00 Daily X2 Rollover + 06:30 Telegram Alert).',
+    message: 'KickAI 24/7 Render.com Background Worker is alive (06:00 Daily Rollover + 06:30 Telegram Alert).',
   });
 });
 
 app.get('/api/ping', (_req, res) => {
+  // Trigger lightweight background catch-up even when woken via /api/ping
+  checkAndTriggerDaily0630Telegram('PING_WAKEUP').catch(() => null);
   res.status(200).send('pong');
 });
 
@@ -4055,6 +4421,10 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`KickAI Server running at http://0.0.0.0:${PORT}`);
+    // Immediate boot catch-up check so waking from Render Free sleep fires missed daily Telegram alerts right away
+    checkAndTriggerDaily0630Telegram('SERVER_BOOT').catch((err) =>
+      console.error('[Telegram Boot Catch-Up Error]', err)
+    );
   });
 }
 

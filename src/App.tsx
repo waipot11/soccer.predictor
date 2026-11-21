@@ -11,8 +11,8 @@ import { MatchDetailModal } from './components/MatchDetailModal';
 import { FacebookAutomationPanel } from './components/FacebookAutomationPanel';
 import { PerformanceAudit } from './components/PerformanceAudit';
 import { LiveSportsChannel } from './components/LiveSportsChannel';
-import { AccumulatorTicket, FacebookConfig, MatchFixture, PostLog, CorrectScoreTip, PastMatchAudit, MonthlyMarketComparisonData, RandomPickOneXBetCriteria, OneXBetFilterReport } from './types';
-import { CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { AccumulatorTicket, FacebookConfig, MatchFixture, PostLog, CorrectScoreTip, PastMatchAudit, MonthlyMarketComparisonData, RandomPickOneXBetCriteria, OneXBetFilterReport, TelegramDiagnostics } from './types';
+import { CheckCircle2, AlertCircle, RefreshCw, BellRing, Send, Settings, AlertTriangle } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'accumulator' | 'live' | 'facebook' | 'performance'>('accumulator');
@@ -25,6 +25,15 @@ export default function App() {
   const [fbConfig, setFbConfig] = useState<FacebookConfig | null>(null);
   const [logs, setLogs] = useState<PostLog[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<MatchFixture | null>(null);
+  const [telegramDiagnostics, setTelegramDiagnostics] = useState<TelegramDiagnostics | null>(null);
+  const [browserNotifyEnabled, setBrowserNotifyEnabled] = useState<boolean>(() => {
+    try {
+      return typeof window !== 'undefined' && localStorage.getItem('kickai_browser_notify_enabled') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [isSendingTelegramBanner, setIsSendingTelegramBanner] = useState<boolean>(false);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
@@ -44,7 +53,64 @@ export default function App() {
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setToastMessage({ text, type });
-    setTimeout(() => setToastMessage(null), 4000);
+    setTimeout(() => setToastMessage(null), 4500);
+  };
+
+  const triggerBrowserNotification = (title: string, body: string) => {
+    try {
+      if (
+        typeof window !== 'undefined' &&
+        'Notification' in window &&
+        Notification.permission === 'granted' &&
+        browserNotifyEnabled
+      ) {
+        new Notification(title, { body, tag: 'kickai-daily-alert' });
+      }
+    } catch {
+      // ignore Notification constructor restrictions on mobile webviews
+    }
+  };
+
+  const handleToggleBrowserNotify = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      showToast('เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน Push Notification', 'error');
+      return;
+    }
+    if (browserNotifyEnabled) {
+      localStorage.setItem('kickai_browser_notify_enabled', 'false');
+      setBrowserNotifyEnabled(false);
+      showToast('ปิดการแจ้งเตือนบนเบราว์เซอร์นี้แล้ว');
+      return;
+    }
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm === 'granted') {
+        localStorage.setItem('kickai_browser_notify_enabled', 'true');
+        setBrowserNotifyEnabled(true);
+        new Notification('KickAI เปิดแจ้งเตือนบนเบราว์เซอร์แล้ว ✅', {
+          body: 'เมื่อมีโพยเด็ดรอบวันหรือบอท Telegram ส่งแจ้งเตือน คุณจะเห็นป๊อปอัปบนอุปกรณ์นี้ทันทีเมื่อเปิดแอป',
+        });
+        showToast('เปิดแจ้งเตือนบนเบราว์เซอร์สำเร็จ!');
+      } else {
+        showToast('คุณยังไม่อนุญาต Notification ในเบราว์เซอร์ (กรุณากด Allow ในแถบ URL)', 'error');
+      }
+    } catch {
+      showToast('ไม่สามารถขอสิทธิ์แจ้งเตือนบนเบราว์เซอร์นี้ได้', 'error');
+    }
+  };
+
+  const handleQuickSendTelegramFromBanner = async () => {
+    try {
+      setIsSendingTelegramBanner(true);
+      const res = await fetch('/api/telegram/send-now', { method: 'POST' });
+      const data = await res.json();
+      if (data.diagnostics) setTelegramDiagnostics(data.diagnostics);
+      showToast(data.message || (data.success ? 'ส่งโพยเข้า Telegram สำเร็จ!' : 'ส่งไม่สำเร็จ'), data.success ? 'success' : 'error');
+    } catch {
+      showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ Telegram API', 'error');
+    } finally {
+      setIsSendingTelegramBanner(false);
+    }
   };
 
   // Initial fetch from backend
@@ -75,6 +141,9 @@ export default function App() {
       if (todayData.marketComparison) {
         setMarketComparison(todayData.marketComparison);
       }
+      if (todayData.telegramStatus?.diagnostics) {
+        setTelegramDiagnostics(todayData.telegramStatus.diagnostics);
+      }
       if (fbData.config) {
         setFbConfig(fbData.config);
         setLogs(fbData.logs || []);
@@ -100,22 +169,36 @@ export default function App() {
         if (data.tip) {
           setCorrectScoreTip((prev) => {
             if (prev && !prev.isAutoPosted && data.tip.isAutoPosted) {
-              showToast('🔥 บอทโพสต์ทีเด็ดฟันธงสกอร์ตรง 100% ขึ้น Facebook อัตโนมัติแล้ว!');
+              showToast('🔥 บอทโพสต์ทีเด็ดฟันธง 1xBet HDP (>98%) อัตโนมัติแล้ว!');
             }
             return data.tip;
+          });
+        }
+        if (data.telegramStatus?.diagnostics) {
+          const nextDiag: TelegramDiagnostics = data.telegramStatus.diagnostics;
+          setTelegramDiagnostics((prevDiag) => {
+            if (prevDiag && !prevDiag.isSentTodayReal && nextDiag.isSentTodayReal && data.tip?.selectedMatch) {
+              const m = data.tip.selectedMatch;
+              triggerBrowserNotification(
+                `⚽ KickAI แจ้งเตือนโพยประจำวัน (${nextDiag.scheduledTimeThai})`,
+                `${m.homeTeam} vs ${m.awayTeam} | ${data.tip.marketRecommendations?.handicapPick || m.recommendedPick}`
+              );
+              showToast(`✈️ ส่งแจ้งเตือน Telegram จริงสำเร็จแล้ว (${m.homeTeam} vs ${m.awayTeam})`);
+            }
+            return nextDiag;
           });
         }
         if (data.pool) setQualifiedPool(data.pool);
         if (data.accumulator) setAccumulator(data.accumulator);
         if (data.audits) setPastAudits(data.audits);
         if (data.marketComparison) setMarketComparison(data.marketComparison);
-      } catch (err) {
+      } catch {
         // silent background poll
       }
     }, 15000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [browserNotifyEnabled]);
 
   // Randomly pick the best match with factor convergence >98% AND 1xBet market criteria
   const handleRandomBestPick = async (overrideCriteria?: RandomPickOneXBetCriteria) => {
@@ -508,6 +591,86 @@ export default function App() {
         isAnalyzing={isAnalyzing}
         isRandomPicking={isRandomPicking}
       />
+
+      {/* Real-Time Telegram Delivery & Sleep Diagnostic Banner */}
+      {telegramDiagnostics && (!telegramDiagnostics.isSentTodayReal && telegramDiagnostics.isPastScheduledTimeThai) && (
+        <div className="bg-rose-950/90 border-b border-rose-500/50 px-4 py-3 text-xs">
+          <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5 text-rose-100">
+              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+              <div>
+                <div className="font-bold text-rose-200">
+                  ⚠️ รอบแจ้งเตือน {telegramDiagnostics.scheduledTimeThai} วันนี้ยังไม่ถูกส่งเข้า Telegram จริง (เวลาไทยตอนนี้ {telegramDiagnostics.currentTimeThai})
+                </div>
+                <div className="text-rose-200/90 mt-0.5">
+                  สาเหตุ: {telegramDiagnostics.reasonThai}
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                onClick={handleQuickSendTelegramFromBanner}
+                disabled={isSendingTelegramBanner}
+                className="px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>{isSendingTelegramBanner ? 'กำลังลองส่ง...' : 'ลองส่ง Telegram ทันที'}</span>
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('facebook');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="px-3 py-1.5 rounded-lg bg-slate-900 border border-rose-400/50 text-rose-100 hover:bg-slate-800 font-semibold transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                <span>ตั้งค่า Token &amp; แก้ไข Render</span>
+              </button>
+              <button
+                onClick={handleToggleBrowserNotify}
+                className="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-200 hover:bg-amber-500/30 font-semibold transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <BellRing className="w-3.5 h-3.5" />
+                <span>{browserNotifyEnabled ? 'เปิดแจ้งเตือนเว็บแล้ว' : 'เปิดแจ้งเตือนเบราว์เซอร์นี้'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {telegramDiagnostics && telegramDiagnostics.isSentTodayReal && (telegramDiagnostics.isEphemeralDataDir || telegramDiagnostics.credentialsSource !== 'RENDER_ENV') && (
+        <div className="bg-amber-950/50 border-b border-amber-500/30 px-4 py-2 text-[11px]">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-amber-200">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span>
+                {telegramDiagnostics.reasonThai}
+                {telegramDiagnostics.isEphemeralDataDir
+                  ? ' · ข้อควรระวัง Render Free: พื้นที่ /tmp ล้างข้อมูลเมื่อหลับ ให้ใส่ TELEGRAM_BOT_TOKEN ใน Render ENV + UptimeRobot กันหลับด้วย'
+                  : ' · หากใช้ Render Free ควรใส่ Token ใน Environment Variables + ตั้ง UptimeRobot ยิง /api/health ทุก 5 นาทีเพื่อไม่ให้ดีเลย์จากเวลาหลับ'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleToggleBrowserNotify}
+                className="px-2.5 py-1 rounded bg-slate-900 border border-amber-500/40 text-amber-200 hover:bg-slate-800 font-semibold cursor-pointer flex items-center gap-1"
+              >
+                <BellRing className="w-3 h-3" />
+                <span>{browserNotifyEnabled ? 'แจ้งเตือนเบราว์เซอร์: เปิด' : 'เปิดแจ้งเตือนเบราว์เซอร์'}</span>
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('facebook');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-slate-200 hover:bg-slate-800 font-semibold cursor-pointer"
+              >
+                เช็คสถานะ Render / Bot
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hero Presentation */}
       <HeroBanner
